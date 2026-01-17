@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zurich Hangout</title>
     
+    <!-- Favicon: Pin Emoji -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📍</text></svg>">
+
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
@@ -25,8 +28,14 @@
             --grid-color: rgba(0, 0, 0, 0.08);
         }
 
-        body {
+        /* Fixed height setup to prevent cutoff on mobile browsers */
+        html, body {
             margin: 0; padding: 0;
+            height: 100%; width: 100%;
+            overflow: hidden;
+        }
+
+        body {
             background-color: var(--bg-color);
             background-image: 
                 linear-gradient(var(--grid-color) 1px, transparent 1px),
@@ -34,9 +43,6 @@
             background-size: 20px 20px;
             font-family: 'VT323', monospace;
             font-size: 20px;
-            overflow-x: hidden; 
-            overflow-y: auto;
-            height: 100%; width: 100%;
         }
 
         .pixel-font { 
@@ -47,15 +53,16 @@
 
         .hidden { display: none !important; }
 
-        /* Login Screen */
+        /* Screens - Adjusted to 100% height */
         #login-screen {
-            height: 100vh;
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             padding: 20px;
             text-align: center;
+            box-sizing: border-box;
         }
 
         .login-card {
@@ -66,6 +73,7 @@
             box-shadow: 8px 8px 0px rgba(0,0,0,0.1);
             width: 100%;
             max-width: 320px;
+            box-sizing: border-box;
         }
 
         h1 { margin-bottom: 24px; color: #333; }
@@ -78,6 +86,7 @@
             font-family: 'VT323', monospace;
             border: 3px solid #333;
             outline: none;
+            box-sizing: border-box;
         }
 
         #login-btn {
@@ -97,8 +106,11 @@
 
         #status-msg { margin-top: 16px; color: #666; min-height: 20px; }
 
-        /* Map Screen */
-        #map-screen { height: 100vh; width: 100vw; position: relative; }
+        #map-screen { 
+            height: 100%; 
+            width: 100%; 
+            position: relative; 
+        }
         #map { height: 100%; width: 100%; z-index: 1; }
 
         /* Top Buttons */
@@ -115,6 +127,7 @@
             font-size: 10px;
             display: flex; align-items: center; gap: 8px;
             cursor: pointer;
+            white-space: nowrap;
         }
 
         #info-btn {
@@ -176,8 +189,11 @@
         .list-item .date { font-size: 14px; color: #888; }
         .list-item .joiners-text { font-size: 14px; color: var(--success); display: block; margin-top: 4px; }
 
+        /* Floating Action Button - Position Fixed/Absolute adjusted for safe mobile viewing */
         .fab {
-            position: absolute; bottom: 30px; left: 20px;
+            position: absolute; 
+            bottom: 45px; 
+            left: 20px;
             width: 60px; height: 60px;
             background-color: var(--accent); color: white;
             font-size: 30px; border: 4px solid #000;
@@ -200,7 +216,8 @@
             border: 4px solid #000; border-bottom: none;
             padding: 24px; box-sizing: border-box;
             animation: slideUp 0.3s steps(4);
-            max-height: 90vh; overflow-y: auto;
+            max-height: 90%; 
+            overflow-y: auto;
             position: relative;
         }
 
@@ -249,6 +266,7 @@
             font-family: 'Press Start 2P', cursive; font-size: 12px;
             color: white; border: 3px solid #000; box-shadow: 5px 5px 0px #000;
             margin-top: 10px; cursor: pointer;
+            box-sizing: border-box;
         }
         .primary-btn:active { box-shadow: 0px 0px 0px #000; transform: translate(3px, 3px); }
 
@@ -381,7 +399,7 @@
             <h1 class="pixel-font">ZÜRI PROMITREFF</h1>
             <div class="input-group">
                 <input type="text" id="username-input" placeholder="YOUR NAME?">
-                <button id="login-btn">ENTER NAME</button>
+                <button id="login-btn">ENTER GAME</button>
             </div>
             <p id="status-msg" class="pixel-font"></p>
         </div>
@@ -540,7 +558,7 @@
         let clickedCoords = null; 
         let isHistoryMode = false;
         let editingId = null; 
-        let pendingAction = null; // {type: 'leave'|'delete', id: string, isHost: bool}
+        let pendingAction = null; 
 
         window.addEventListener('load', () => {
             const saved = localStorage.getItem('hangout_user');
@@ -591,7 +609,6 @@
             listenForHangouts();
             listenForUsers();
 
-            // Midnight Checker
             setInterval(() => {
                 const now = new Date();
                 if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() < 10) {
@@ -756,7 +773,6 @@
             }
         });
 
-        // --- CUSTOM DROPDOWN LOGIC ---
         UI.friendInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
             if (!val) {
@@ -1064,10 +1080,21 @@
             const currentJoinerEntry = data.joiners ? data.joiners[currentUser.name] : null;
             const isActiveJoiner = currentJoinerEntry && getStatus(currentJoinerEntry.start_time, currentJoinerEntry.end_time) !== 'red';
 
+            // DYNAMIC STATUS TEXT
+            let statusText = "";
+            if (isHistoryMode) {
+                statusText = dateStr;
+            } else {
+                const hostName = data.host ? data.host.toUpperCase() : 'FRIEND';
+                if (status === 'yellow') statusText = hostName + ' WILL BE HERE';
+                else if (status === 'red') statusText = hostName + ' WAS HERE';
+                else statusText = hostName + ' IS HERE';
+            }
+
             const popup = `
                 <div style="text-align: center; font-family:'VT323'; font-size:18px; max-width: 200px;">
                     <strong style="font-family:'Press Start 2P'; font-size:10px;">${data.location_name}</strong><br>
-                    <span style="display:block; margin: 4px 0;">${isHistoryMode ? dateStr : data.host + ' IS HERE'}</span>
+                    <span style="display:block; margin: 4px 0;">${statusText}</span>
                     <small style="color:#777;">${data.start_time} - ${data.end_time}</small>
                     <div style="margin-top:5px; border-top:1px solid #ccc; padding-top:5px;">
                         <span style="font-size:14px; display:block;">PARTY:</span>
@@ -1106,10 +1133,9 @@
             const [eh, em] = (end || "23:59").split(':').map(Number);
             const endM = eh * 60 + em;
 
-            // Use >= so that exactly at end time it turns red
             if (cur >= endM) return 'red';
             return 'green';
         }
     </script>
 </body>
-</html>
+</html> 
