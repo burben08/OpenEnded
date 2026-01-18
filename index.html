@@ -3,500 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ÖBER UME?</title>
-    <meta property="og:title" content="ÖBER UME?">
+    <title>Zurich Hangout</title>
     
-    <!-- Favicon: Pin Emoji -->
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23007bff%22/><text y=%22.9em%22 x=%22.1em%22 font-size=%2270%22>📍</text></svg>">
+
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📍</text></svg>">
 
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
-    
-    <!-- Google Fonts: VT323 and Press Start 2P -->
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #007bff;
-            --primary-dark: #0056b3;
-            --accent: #FF5722;
-            --success: #2da44e;
-            --warning: #e3b341;
-            --danger: #cf222e;
-            --history: #6f42c1;
-            --bg-color: #f8f9fa;
-            --grid-color: rgba(0, 0, 0, 0.08);
+            --primary: #007bff; --primary-dark: #0056b3; --accent: #FF5722;
+            --success: #2da44e; --warning: #e3b341; --danger: #cf222e;
+            --history: #6f42c1; --bg-color: #f8f9fa; --grid-color: rgba(0, 0, 0, 0.08);
         }
 
-        /* Fixed height setup to prevent cutoff using dynamic viewport units */
-        html, body {
-            margin: 0; padding: 0;
-            height: 100%;
-            height: 100dvh; /* Dynamic viewport height for mobile browsers */
-            width: 100%;
-            overflow: hidden;
-            position: fixed; /* Prevents unwanted rubber-band scrolling */
-        }
-
-        body {
-            background-color: var(--bg-color);
-            background-image: 
-                linear-gradient(var(--grid-color) 1px, transparent 1px),
-                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-            background-size: 20px 20px;
-            font-family: 'VT323', monospace;
-            font-size: 20px;
-        }
-
-        .pixel-font { 
-            font-family: 'Press Start 2P', cursive; 
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
+        html, body { margin: 0; padding: 0; height: 100dvh; width: 100%; overflow: hidden; position: fixed; }
+        body { background-color: var(--bg-color); background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size: 20px 20px; font-family: 'VT323', monospace; font-size: 20px; }
+        .pixel-font { font-family: 'Press Start 2P', cursive; font-size: 12px; line-height: 1.5; }
         .hidden { display: none !important; }
 
-        /* Screens - Adjusted to handle safe areas */
-        #login-screen {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            padding-bottom: env(safe-area-inset-bottom);
-            text-align: center;
-            box-sizing: border-box;
-        }
+        /* Shared Components */
+        .login-card, .modal-content { background: white; border: 4px solid #333; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); image-rendering: pixelated; }
+        #login-screen { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .login-card { padding: 30px; width: 100%; max-width: 320px; }
+        input[type="text"] { padding: 12px 16px; font-size: 22px; font-family: 'VT323', monospace; border: 3px solid #333; outline: none; width: 100%; box-sizing: border-box; }
+        
+        .primary-btn { width: 100%; background-color: var(--primary); padding: 15px; font-family: 'Press Start 2P', cursive; font-size: 12px; color: white; border: 3px solid #000; box-shadow: 5px 5px 0px #000; cursor: pointer; margin-top: 10px; }
+        .primary-btn:active { box-shadow: 0px 0px 0px #000; transform: translate(3px, 3px); }
+        .danger-btn { background-color: var(--danger); }
+        .success-btn { background-color: var(--success); }
 
-        .login-card {
-            background: white;
-            padding: 30px;
-            border: 4px solid #333;
-            image-rendering: pixelated;
-            box-shadow: 8px 8px 0px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 320px;
-            box-sizing: border-box;
-        }
-
-        h1 { margin-bottom: 24px; color: #333; }
-
-        .input-group { display: flex; flex-direction: column; gap: 12px; }
-
-        input[type="text"] {
-            padding: 12px 16px;
-            font-size: 22px;
-            font-family: 'VT323', monospace;
-            border: 3px solid #333;
-            outline: none;
-            box-sizing: border-box;
-        }
-
-        #login-btn {
-            padding: 12px;
-            font-size: 14px;
-            background-color: var(--primary);
-            color: white;
-            border: 3px solid #000;
-            box-shadow: 4px 4px 0px #000;
-            cursor: pointer;
-            font-family: 'Press Start 2P', cursive;
-        }
-        #login-btn:active {
-            box-shadow: 0px 0px 0px #000;
-            transform: translate(2px, 2px);
-        }
-
-        #status-msg { margin-top: 16px; color: #666; min-height: 20px; }
-
-        #map-screen { 
-            height: 100%; 
-            width: 100%; 
-            position: relative; 
-        }
+        #map-screen { height: 100%; width: 100%; position: relative; }
         #map { height: 100%; width: 100%; z-index: 1; }
 
-        /* Top Buttons - Adjusted with safe area support */
-        #list-toggle-btn {
-            position: absolute;
-            top: calc(15px + env(safe-area-inset-top)); 
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1100;
-            background: white;
-            border: 3px solid #333;
-            padding: 10px 20px;
-            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
-            font-family: 'Press Start 2P', cursive;
-            font-size: 10px;
-            display: flex; align-items: center; gap: 8px;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        #info-btn {
-            position: absolute;
-            top: calc(15px + env(safe-area-inset-top)); 
-            left: 15px;
-            z-index: 1100;
-            background: white;
-            border: 3px solid #333;
-            width: 45px; height: 45px;
-            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
-            font-family: 'Press Start 2P', cursive;
-            font-size: 18px;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer;
-        }
-        #info-btn.active {
-            background-color: var(--history);
-            color: white;
-        }
-
-        /* History Mode Indicator */
-        #mode-indicator {
-            position: absolute;
-            top: calc(75px + env(safe-area-inset-top)); 
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1090;
-            background: var(--history);
-            color: white;
-            padding: 5px 15px;
-            border: 2px solid #000;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 8px;
-            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
-        }
-
-        #hangouts-panel {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            background: white;
-            z-index: 1050;
-            max-height: 60dvh;
-            overflow-y: auto;
-            border-bottom: 4px solid #333;
-            transform: translateY(-100%);
-            transition: transform 0.3s steps(4);
-            padding-top: calc(70px + env(safe-area-inset-top));
-        }
-        #hangouts-panel.open { transform: translateY(0); }
-
-        .list-item {
-            padding: 16px 20px;
-            border-bottom: 2px solid #eee;
-            display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer;
-        }
-        .list-item:active { background-color: #f0f0f0; }
-        .list-item .host { font-family: 'Press Start 2P', cursive; font-size: 10px; color: #333; }
-        .list-item .loc { font-size: 20px; color: var(--primary); }
-        .list-item .date { font-size: 14px; color: #888; }
-        .list-item .joiners-text { font-size: 14px; color: var(--success); display: block; margin-top: 4px; }
-
-        /* Floating Action Button - Positioned safely above mobile browser bars */
-        .fab {
-            position: absolute; 
-            bottom: calc(30px + env(safe-area-inset-bottom)); 
-            left: 20px;
-            width: 60px; height: 60px;
-            background-color: var(--accent); color: white;
-            font-size: 30px; border: 4px solid #000;
-            box-shadow: 5px 5px 0px #000;
-            z-index: 1000; cursor: pointer;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .fab:active { box-shadow: 0px 0px 0px #000; transform: translate(3px, 3px); }
-
-        /* Modal */
-        .modal {
-            position: fixed; z-index: 2000; left: 0; top: 0;
-            width: 100%; height: 100%;
-            height: 100dvh;
-            background-color: rgba(0,0,0,0.7);
-            display: flex; justify-content: center; align-items: flex-end;
-        }
-
-        .modal-content {
-            background-color: white; width: 100%; max-width: 500px;
-            border: 4px solid #000; border-bottom: none;
-            padding: 24px; 
-            padding-bottom: calc(24px + env(safe-area-inset-bottom));
-            box-sizing: border-box;
-            animation: slideUp 0.3s steps(4);
-            max-height: 90%; 
-            overflow-y: auto;
-            position: relative;
-        }
-
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        .close { position: absolute; top: 10px; right: 15px; font-size: 30px; cursor: pointer; color: #000; }
-
-        .form-group { margin-bottom: 20px; position: relative; }
-        .form-group label { display: block; font-family: 'Press Start 2P', cursive; font-size: 10px; margin-bottom: 8px; color: #000; }
+        /* UI Overlays */
+        #list-toggle-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 1100; background: white; border: 3px solid #333; padding: 10px 20px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 10px; cursor: pointer; }
+        #info-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 15px; z-index: 1100; background: white; border: 3px solid #333; width: 45px; height: 45px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 18px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        #info-btn.active { background-color: var(--history); color: white; }
         
+        #hangouts-panel { position: fixed; top: 0; left: 0; width: 100%; background: white; z-index: 1050; max-height: 60dvh; overflow-y: auto; border-bottom: 4px solid #333; transform: translateY(-100%); transition: transform 0.3s steps(4); padding-top: calc(70px + env(safe-area-inset-top)); }
+        #hangouts-panel.open { transform: translateY(0); }
+        .list-item { padding: 16px 20px; border-bottom: 2px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        
+        .fab { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); left: 20px; width: 60px; height: 60px; background-color: var(--accent); color: white; font-size: 30px; border: 4px solid #000; box-shadow: 5px 5px 0px #000; z-index: 1000; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+
+        /* Modals */
+        .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: flex-end; }
+        .modal-content { width: 100%; max-width: 500px; border-bottom: none; padding: 24px; box-sizing: border-box; animation: slideUp 0.3s steps(4); max-height: 90%; overflow-y: auto; position: relative; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .close { position: absolute; top: 10px; right: 15px; font-size: 30px; cursor: pointer; }
+
+        /* Notifications Banner */
+        #notif-banner { position: absolute; bottom: calc(100px + env(safe-area-inset-bottom)); left: 20px; right: 20px; background: white; border: 3px solid #000; padding: 15px; z-index: 999; box-shadow: 4px 4px 0px #000; text-align: center; }
+
+        /* Chips & UI Elements */
+        .form-group { margin-bottom: 20px; position: relative; }
+        .form-group label { display: block; font-family: 'Press Start 2P', cursive; font-size: 10px; margin-bottom: 8px; }
         .chips-container { display: flex; flex-wrap: wrap; gap: 8px; }
-        .chip { 
-            padding: 6px 12px; border: 2px solid #000; 
-            background: white; cursor: pointer; font-family: 'VT323', monospace; font-size: 18px;
-            box-shadow: 3px 3px 0px #ddd;
-        }
+        .chip { padding: 6px 12px; border: 2px solid #000; background: white; cursor: pointer; font-family: 'VT323', monospace; font-size: 18px; box-shadow: 3px 3px 0px #ddd; }
         .chip.selected { background-color: var(--primary); color: white; box-shadow: 3px 3px 0px #000; }
-        .chip.history-chip { background-color: var(--history); color: white; border-color: #000; }
-
-        .slider-container { margin: 10px 10px 30px 10px; }
-        #time-display, .join-time-display { font-family: 'Press Start 2P', cursive; font-size: 10px; color: var(--primary); margin-bottom: 12px; }
-
         .friend-input-wrapper { display: flex; border: 3px solid #000; }
         #friend-input { border: none; flex-grow: 1; padding: 10px; font-family: 'VT323', monospace; font-size: 20px; outline: none; }
         #add-friend-btn { background-color: #eee; border: none; border-left: 3px solid #000; padding: 0 15px; font-family: 'VT323', monospace; font-weight: bold; cursor: pointer; }
-
-        /* Custom Styled Dropdown for Friend Suggestions */
-        #friend-suggestions {
-            position: absolute;
-            top: 100%; left: 0; right: 0;
-            background: white; border: 3px solid #000;
-            z-index: 2100; max-height: 150px; overflow-y: auto;
-            box-shadow: 5px 5px 0px rgba(0,0,0,0.1);
-        }
-        .suggestion-item {
-            padding: 8px 12px;
-            font-family: 'VT323', monospace;
-            font-size: 18px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
+        #friend-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 3px solid #000; z-index: 2100; max-height: 150px; overflow-y: auto; }
+        .suggestion-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
         .suggestion-item:hover { background-color: var(--primary); color: white; }
 
-        .primary-btn { 
-            width: 100%; background-color: var(--primary); padding: 15px; 
-            font-family: 'Press Start 2P', cursive; font-size: 12px;
-            color: white; border: 3px solid #000; box-shadow: 5px 5px 0px #000;
-            margin-top: 10px; cursor: pointer;
-            box-sizing: border-box;
-        }
-        .primary-btn:active { box-shadow: 0px 0px 0px #000; transform: translate(3px, 3px); }
-
-        .danger-btn {
-            background-color: var(--danger);
-            margin-top: 20px;
-        }
-
-        #error-toast {
-            position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 3000; background: #fff;
-            border: 4px solid var(--danger);
-            padding: 20px; text-align: center;
-            box-shadow: 8px 8px 0px rgba(0,0,0,0.2);
-            width: 80%; max-width: 300px;
-        }
-        #error-toast button {
-            margin-top: 15px; background: var(--danger); color: #fff;
-            border: 2px solid #000; padding: 8px 15px;
-            font-family: 'Press Start 2P', cursive; font-size: 10px; cursor: pointer;
-        }
-
-        /* Marker Styles */
+        /* Markers */
         .leaflet-div-icon { background: transparent; border: none; }
-        .custom-marker {
-            width: 32px; height: 32px; border-radius: 4px;
-            color: white; font-weight: bold;
-            display: flex; justify-content: center; align-items: center;
-            border: 3px solid black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
-            font-size: 18px; text-transform: uppercase;
-        }
+        .custom-marker { width: 32px; height: 32px; border-radius: 4px; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 3px solid black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3); font-size: 18px; text-transform: uppercase; }
         .marker-green { background-color: var(--success); }
         .marker-yellow { background-color: var(--warning); color: #000; }
         .marker-red { background-color: var(--danger); }
         .marker-history { background-color: var(--history); }
-
-        /* Popup Edit Buttons */
-        .popup-controls {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            border-top: 1px solid #ccc;
-            padding-top: 8px;
-        }
-        .edit-btn, .leave-btn, .join-btn {
-            background: #eee;
-            border: 2px solid #000;
-            font-family: 'VT323', monospace;
-            font-size: 16px;
-            padding: 2px 8px;
-            cursor: pointer;
-        }
-        .edit-btn:hover { background: var(--primary); color: white; }
-        .leave-btn:hover { background: var(--danger); color: white; }
-        .join-btn { background: var(--success); color: white; }
-
-        /* Confirm Modal Styles */
-        #confirm-modal, #join-modal { align-items: center; }
-        #confirm-modal .modal-content, #join-modal .modal-content {
-            border: 4px solid #000;
-            border-radius: 0;
-            max-width: 350px;
-            padding: 30px;
-            text-align: center;
-            animation: none;
-            transform: translateY(0);
-        }
-        .confirm-title { font-size: 12px; color: var(--danger); margin-bottom: 20px; }
-        .join-title { font-size: 12px; color: var(--success); margin-bottom: 20px; }
-        .confirm-btns { display: flex; gap: 15px; justify-content: center; margin-top: 20px; }
-        .btn-yes, .btn-no {
-            font-family: 'Press Start 2P', cursive;
-            font-size: 10px;
-            padding: 10px 20px;
-            border: 3px solid #000;
-            cursor: pointer;
-            box-shadow: 4px 4px 0px #000;
-        }
-        .btn-yes { background-color: var(--danger); color: white; }
-        .btn-no { background-color: #eee; color: #000; }
-        .btn-yes:active, .btn-no:active { box-shadow: 0px 0px 0px #000; transform: translate(2px, 2px); }
+        .popup-controls { margin-top: 10px; display: flex; gap: 10px; justify-content: center; border-top: 1px solid #ccc; padding-top: 8px; }
+        .edit-btn, .leave-btn, .join-btn { background: #eee; border: 2px solid #000; font-family: 'VT323', monospace; font-size: 16px; padding: 2px 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <!-- ERROR TOAST -->
+    <!-- NOTIFICATION PROMPT -->
+    <div id="notif-banner" class="hidden">
+        <p class="pixel-font" style="font-size: 10px; margin-bottom: 10px;">ENABLE PUSH NOTIFICATIONS?</p>
+        <button id="enable-notif-btn" class="primary-btn success-btn" style="margin: 0; width: auto; font-size: 10px;">ENABLE</button>
+        <button onclick="this.parentElement.classList.add('hidden')" class="pixel-font" style="background: none; border: none; text-decoration: underline; margin-left: 10px; cursor: pointer;">LATER</button>
+    </div>
+
     <div id="error-toast" class="hidden">
         <p class="pixel-font" style="color: var(--danger)">ERROR:</p>
         <p class="pixel-font" id="error-msg"></p>
-        <button onclick="closeError()">OK</button>
+        <button onclick="this.parentElement.classList.add('hidden')">OK</button>
     </div>
 
-    <!-- CUSTOM CONFIRM MODAL (Used for Leave and Delete) -->
+    <!-- CONFIRM MODAL -->
     <div id="confirm-modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content" style="align-items: center; text-align: center;">
             <h2 id="confirm-modal-title" class="pixel-font confirm-title">CONFIRM?</h2>
             <p id="confirm-modal-text" class="pixel-font" style="font-size: 10px;">ACTION CANNOT BE UNDONE.</p>
-            <div class="confirm-btns">
-                <button id="confirm-yes-btn" class="btn-yes">YES</button>
-                <button id="confirm-no-btn" class="btn-no">NO</button>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                <button id="confirm-yes-btn" class="primary-btn danger-btn" style="width: auto;">YES</button>
+                <button id="confirm-no-btn" class="primary-btn" style="width: auto; background: #eee; color: #000;">NO</button>
             </div>
         </div>
     </div>
 
     <!-- JOIN MODAL -->
     <div id="join-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2 class="pixel-font join-title">JOIN HANGOUT</h2>
+        <div class="modal-content" style="text-align: center;">
+            <h2 class="pixel-font" style="color: var(--success);">JOIN HANGOUT</h2>
             <div class="form-group">
                 <label>STAY DURATION</label>
-                <div class="join-time-display">00:00 — 00:00</div>
+                <div class="join-time-display pixel-font" style="color: var(--primary); margin-bottom: 10px;">00:00 — 00:00</div>
                 <div id="join-time-slider" class="slider-container"></div>
-                <div class="checkbox-wrapper" style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+                <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
                     <input type="checkbox" id="join-open-ended" checked>
                     <label for="join-open-ended" style="margin-bottom: 0;">OPEN END</label>
                 </div>
             </div>
-            <div class="confirm-btns">
-                <button id="join-confirm-btn" class="primary-btn" style="margin-top:0; width: auto;">CONFIRM</button>
-                <button id="join-cancel-btn" class="btn-no" style="box-shadow: 5px 5px 0px #000;">CANCEL</button>
+            <div style="display: flex; gap: 10px;">
+                <button id="join-confirm-btn" class="primary-btn success-btn">CONFIRM</button>
+                <button id="join-cancel-btn" class="primary-btn" style="background: #eee; color: #000;">CANCEL</button>
             </div>
         </div>
     </div>
 
-    <!-- LOGIN SCREEN -->
     <div id="login-screen">
         <div class="login-card">
-            <h1 class="pixel-font">ZÜRI PROMITREFF</h1>
+            <h1 class="pixel-font">ZURICH HANGOUT</h1>
             <div class="input-group">
                 <input type="text" id="username-input" placeholder="YOUR NAME?">
-                <button id="login-btn">DI NAME...</button>
+                <button id="login-btn">ENTER GAME</button>
             </div>
             <p id="status-msg" class="pixel-font"></p>
         </div>
     </div>
 
-    <!-- MAP SCREEN -->
     <div id="map-screen" class="hidden">
         <div id="map"></div>
-        
-        <button id="info-btn" title="Toggle History Mode">i</button>
-        
+        <button id="info-btn">i</button>
         <div id="mode-indicator" class="hidden">HISTORY MODE ACTIVE</div>
-
-        <button id="list-toggle-btn">
-            LOCATIONS <span class="arrow">▼</span>
-        </button>
-
-        <div id="hangouts-panel">
-            <div id="hangouts-list-container">
-                <div class="empty-list-msg pixel-font">No one online...</div>
-            </div>
-        </div>
-
+        <button id="list-toggle-btn">LOCATIONS <span class="arrow">▼</span></button>
+        <div id="hangouts-panel"><div id="hangouts-list-container"></div></div>
         <button id="add-hangout-btn" class="fab">+</button>
     </div>
 
-    <!-- HANGOUT MODAL -->
     <div id="hangout-modal" class="modal hidden">
         <div class="modal-content">
             <span id="close-modal" class="close">×</span>
-            <h2 id="modal-title" class="pixel-font" style="margin-top: 0;">NEW ENTRY</h2>
-
+            <h2 id="modal-title" class="pixel-font">NEW ENTRY</h2>
             <div class="form-group">
                 <label>WHERE?</label>
                 <small id="location-hint" class="hint-text hidden pixel-font" style="color: var(--success); margin-bottom: 5px; display: block;">MAP PIN ACTIVE</small> 
                 <input type="text" id="location-name" placeholder="SEARCH OR NAME PIN">
             </div>
-
             <div class="form-group">
                 <label>TIMER</label>
-                <div id="time-display">00:00 — 00:00</div>
+                <div id="time-display" class="pixel-font" style="color: var(--primary);">00:00 — 00:00</div>
                 <div id="time-slider" class="slider-container"></div>
-                <div class="checkbox-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" id="open-ended">
                     <label for="open-ended" style="margin-bottom: 0;">NO END TIME</label>
                 </div>
             </div>
-
             <div class="form-group">
                 <label>MOOD</label>
                 <div class="chips-container" id="intentions-container">
-                    <button class="chip" data-val="Coffee">Kaffi-Schwatz</button>
-                    <button class="chip" data-val="Beers">Fübber</button>
-                    <button class="chip" data-val="Reading">Zäme lese</button>
-                    <button class="chip" data-val="Games">Game</button>
-                    <button class="chip" data-val="Fun Work">"Schaffe"</button>
-                    <button class="chip" data-val="Serious Work">Schaffe</button>
-                    <button class="chip" data-val="Drinking">Festplatte lösche</button>
-                    <button class="chip" data-val="Bar Game">Bar Hunt</button>
+                    <button class="chip" data-val="Coffee">Coffee</button>
+                    <button class="chip" data-val="Beers">Beers</button>
+                    <button class="chip" data-val="Games">Games</button>
+                    <button class="chip" data-val="Talking">Talking</button>
+                    <button class="chip" data-val="Work">Work</button>
+                    <button class="chip" data-val="Random">Random</button>
                 </div>
             </div>
-
             <div class="form-group">
                 <label>PARTY</label>
-                <div class="friend-input-wrapper">
-                    <input type="text" id="friend-input" placeholder="ADD NAME">
-                    <button id="add-friend-btn">ADD</button>
-                </div>
-                <!-- Custom dropdown -->
+                <div class="friend-input-wrapper"><input type="text" id="friend-input" placeholder="ADD NAME"><button id="add-friend-btn">ADD</button></div>
                 <div id="friend-suggestions" class="hidden"></div>
                 <div id="friends-list" class="friends-tags" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;"></div>
             </div>
-
             <button id="save-hangout-btn" class="primary-btn">BROADCAST</button>
             <button id="edit-delete-btn" class="primary-btn danger-btn hidden">DELETE ENTRY</button>
         </div>
     </div>
 
-    <!-- Firebase & Libraries -->
+    <!-- Firebase SDKs -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
 
     <script>
-        // --- CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDUQ2gWD92UrDM94_f2yNklYXBInT9cDvw",
             authDomain: "openended-f7e4e.firebaseapp.com",
@@ -508,8 +214,12 @@
             measurementId: "G-S8P7E02CWL"
         };
 
+        // --- PASTE YOUR VAPID KEY HERE ---
+        const VAPID_KEY = "Byxz9-OQWwwRPyF6XD8P7Pg5fmmOZCA6QyUQwT_ibMM"; 
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const messaging = firebase.messaging.isSupported() ? firebase.messaging() : null;
 
         const UI = {
             loginScreen: document.getElementById('login-screen'),
@@ -540,21 +250,19 @@
             listContainer: document.getElementById('hangouts-list-container'),
             errorToast: document.getElementById('error-toast'),
             errorMsg: document.getElementById('error-msg'),
-            
-            // Confirm Generic UI
             confirmModal: document.getElementById('confirm-modal'),
             confirmModalTitle: document.getElementById('confirm-modal-title'),
             confirmModalText: document.getElementById('confirm-modal-text'),
             confirmYesBtn: document.getElementById('confirm-yes-btn'),
             confirmNoBtn: document.getElementById('confirm-no-btn'),
-
-            // Join UI
             joinModal: document.getElementById('join-modal'),
             joinSlider: document.getElementById('join-time-slider'),
             joinTimeDisplay: document.querySelector('.join-time-display'),
             joinOpenEnded: document.getElementById('join-open-ended'),
             joinConfirmBtn: document.getElementById('join-confirm-btn'),
-            joinCancelBtn: document.getElementById('join-cancel-btn')
+            joinCancelBtn: document.getElementById('join-cancel-btn'),
+            notifBanner: document.getElementById('notif-banner'),
+            enableNotifBtn: document.getElementById('enable-notif-btn')
         };
 
         let currentUser = null;
@@ -571,11 +279,32 @@
         let editingId = null; 
         let pendingAction = null; 
 
+        // --- NOTIFICATION LOGIC ---
+        async function setupNotifications() {
+            if (!messaging) return;
+            
+            try {
+                const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                if (token) {
+                    await db.ref(`users/${currentUser.name}/fcmToken`).set(token);
+                    UI.notifBanner.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("Notif setup failed:", err);
+            }
+        }
+
+        UI.enableNotifBtn.addEventListener('click', setupNotifications);
+
+        // --- APP FLOW ---
         window.addEventListener('load', () => {
             const saved = localStorage.getItem('hangout_user');
             if (saved) {
                 currentUser = JSON.parse(saved);
                 enterApp();
+            }
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('firebase-messaging-sw.js');
             }
         });
 
@@ -584,7 +313,6 @@
             if (!nameInput) return;
             const nameId = nameInput.toLowerCase().replace(/\s+/g, '_');
             UI.statusMsg.innerText = "CONNECTING...";
-            
             try {
                 const snapshot = await db.ref('users/' + nameId).once('value');
                 const userData = snapshot.val();
@@ -597,34 +325,29 @@
                 }
                 localStorage.setItem('hangout_user', JSON.stringify(currentUser));
                 enterApp();
-            } catch (err) {
-                UI.statusMsg.innerText = "ERROR!";
-            }
+            } catch (err) { UI.statusMsg.innerText = "ERROR!"; }
         });
 
         function enterApp() {
             UI.loginScreen.classList.add('hidden');
             UI.mapScreen.classList.remove('hidden');
             if (!map) initMap();
+            // Show notification banner if no token saved
+            db.ref(`users/${currentUser.name}/fcmToken`).once('value', snap => {
+                if (!snap.exists() && messaging) UI.notifBanner.classList.remove('hidden');
+            });
         }
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([47.3769, 8.5417], 13);
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([47.3769, 8.5417], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             setTimeout(() => map.invalidateSize(), 200);
-            map.on('click', (e) => { 
-                if (isHistoryMode) return; 
-                clickedCoords = e.latlng; 
-                openModal(true); 
-            });
+            map.on('click', e => { if (!isHistoryMode) { clickedCoords = e.latlng; openModal(true); } });
             listenForHangouts();
             listenForUsers();
-
             setInterval(() => {
                 const now = new Date();
-                if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() < 10) {
-                    renderMarkersAndList(); 
-                }
+                if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() < 10) renderMarkersAndList();
             }, 5000);
         }
 
@@ -643,61 +366,45 @@
         function renderMarkersAndList() {
             Object.values(markers).forEach(m => map.removeLayer(m));
             markers = {};
-
             const keys = Object.keys(allHangouts);
             let displayList = [];
-
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
+            const todayStart = new Date(); todayStart.setHours(0,0,0,0);
             const todayTimestamp = todayStart.getTime();
 
             if (isHistoryMode) {
                 displayList = keys.map(k => ({ id: k, ...allHangouts[k] }))
-                                 .filter(item => {
-                                     const userInJoiners = item.joiners && Object.values(item.joiners).some(j => j.name === currentUser.name);
-                                     return item.host_id === currentUser.name || (item.friends && item.friends.includes(currentUser.display)) || userInJoiners;
-                                 })
-                                 .sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    .filter(item => {
+                        const userInJoiners = item.joiners && Object.values(item.joiners).some(j => j.name === currentUser.name);
+                        return item.host_id === currentUser.name || (item.friends && item.friends.includes(currentUser.display)) || userInJoiners;
+                    }).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
             } else {
                 displayList = keys.map(k => ({ id: k, ...allHangouts[k] }))
-                                 .filter(item => (item.timestamp || 0) >= todayTimestamp)
-                                 .sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    .filter(item => (item.timestamp || 0) >= todayTimestamp)
+                    .sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
             }
 
             displayList.forEach(item => createMarker(item.id, item));
-
             if (displayList.length === 0) {
-                UI.listContainer.innerHTML = `<div class="empty-list-msg pixel-font">No one online...</div>`;
+                UI.listContainer.innerHTML = `<div class="empty-list-msg pixel-font">Nothing found...</div>`;
             } else {
                 UI.listContainer.innerHTML = displayList.map(item => {
-                    let colorClass = 'marker-green';
+                    let color = 'marker-green';
                     if (!isHistoryMode) {
-                        const status = getStatus(item.start_time, item.end_time);
-                        if (status === 'yellow') colorClass = 'marker-yellow';
-                        if (status === 'red') colorClass = 'marker-red';
-                    } else {
-                        colorClass = 'marker-history';
-                    }
-                    
+                        const s = getStatus(item.start_time, item.end_time);
+                        if (s === 'yellow') color = 'marker-yellow';
+                        if (s === 'red') color = 'marker-red';
+                    } else color = 'marker-history';
                     const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'Today';
                     const joinersList = item.joiners ? Object.values(item.joiners).map(j => j.display).join(', ') : '';
-                    
-                    return `
-                        <div class="list-item" onclick="jumpToHangout('${item.id}')">
-                            <div class="info">
-                                <span class="host">${item.host} ${item.host_id === currentUser.name ? '(You)' : ''}</span>
-                                <span class="loc">${item.location_name}</span>
-                                <span class="date">${dateStr} | ${item.start_time} — ${item.end_time}</span>
-                                ${joinersList ? `<span class="joiners-text">Joined: ${joinersList}</span>` : ''}
-                            </div>
-                            <div class="custom-marker ${colorClass}" style="width:12px; height:12px; min-width:12px; min-height:12px; box-shadow:none;"></div>
-                        </div>
-                    `;
+                    return `<div class="list-item" onclick="jumpToHangout('${item.id}')">
+                        <div class="info"><span class="host">${item.host}</span><span class="loc">${item.location_name}</span><span class="date">${dateStr} | ${item.start_time} — ${item.end_time}</span>${joinersList ? `<span class="joiners-text">Joined: ${joinersList}</span>` : ''}</div>
+                        <div class="custom-marker ${color}" style="width:12px; height:12px; min-width:12px; min-height:12px; box-shadow:none;"></div>
+                    </div>`;
                 }).join('');
             }
         }
 
-        window.jumpToHangout = (id) => {
+        window.jumpToHangout = id => {
             const h = allHangouts[id];
             if (h && h.coordinates) {
                 UI.hangoutsPanel.classList.remove('open');
@@ -710,446 +417,155 @@
         function openModal(isMapClick = false, prefillData = null) {
             UI.modal.classList.remove('hidden');
             initSlider();
-
             if (prefillData) {
-                editingId = prefillData.id;
-                UI.modalTitle.innerText = "EDIT ENTRY";
-                UI.saveBtn.innerText = "UPDATE";
-                UI.editDeleteBtn.classList.remove('hidden');
-                UI.locationInput.value = prefillData.location_name;
-                selectedIntentions = [...(prefillData.intentions || [])];
-                selectedFriends = [...(prefillData.friends || [])];
-                
+                editingId = prefillData.id; UI.modalTitle.innerText = "EDIT ENTRY"; UI.saveBtn.innerText = "UPDATE"; UI.editDeleteBtn.classList.remove('hidden');
+                UI.locationInput.value = prefillData.location_name; selectedIntentions = [...(prefillData.intentions || [])]; selectedFriends = [...(prefillData.friends || [])];
                 UI.openEnded.checked = prefillData.end_time === "Open";
-                
                 const [sh, sm] = prefillData.start_time.split(':').map(Number);
-                const startMins = sh * 60 + sm;
-                let endMins = 1440;
-                if (prefillData.end_time !== "Open") {
-                    const [eh, em] = prefillData.end_time.split(':').map(Number);
-                    endMins = eh * 60 + em;
-                }
-                timeSliderInstance.set([startMins, endMins]);
-                
-                clickedCoords = prefillData.coordinates;
-                UI.locationHint.classList.remove('hidden');
-                UI.locationHint.innerText = "Coordinates Saved";
+                let endMins = 1440; if (prefillData.end_time !== "Open") { const [eh, em] = prefillData.end_time.split(':').map(Number); endMins = eh * 60 + em; }
+                timeSliderInstance.set([sh * 60 + sm, endMins]);
+                clickedCoords = prefillData.coordinates; UI.locationHint.classList.remove('hidden'); UI.locationHint.innerText = "Coordinates Saved";
             } else {
-                editingId = null;
-                UI.modalTitle.innerText = "NEW ENTRY";
-                UI.saveBtn.innerText = "BROADCAST";
-                UI.editDeleteBtn.classList.add('hidden');
-                UI.locationInput.value = "";
-                selectedIntentions = [];
-                selectedFriends = [];
-                UI.openEnded.checked = false;
-                
-                if (isMapClick) {
-                    UI.locationHint.classList.remove('hidden');
-                    UI.locationHint.innerText = "Using pinned location";
-                    UI.locationInput.placeholder = "NAME YOUR PIN";
-                } else {
-                    clickedCoords = null;
-                    UI.locationHint.classList.add('hidden');
-                    UI.locationInput.placeholder = "SEARCH LOCATION";
-                }
+                editingId = null; UI.modalTitle.innerText = "NEW ENTRY"; UI.saveBtn.innerText = "BROADCAST"; UI.editDeleteBtn.classList.add('hidden');
+                UI.locationInput.value = ""; selectedIntentions = []; selectedFriends = []; UI.openEnded.checked = false;
+                if (isMapClick) { UI.locationHint.classList.remove('hidden'); UI.locationHint.innerText = "Using pinned location"; } else { clickedCoords = null; UI.locationHint.classList.add('hidden'); }
             }
-            
-            UI.intentions.querySelectorAll('.chip').forEach(c => {
-                c.classList.toggle('selected', selectedIntentions.includes(c.dataset.val));
-            });
-            renderFriends();
-            UI.saveBtn.disabled = false;
-            UI.locationInput.focus();
+            UI.intentions.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', selectedIntentions.includes(c.dataset.val)));
+            renderFriends(); UI.saveBtn.disabled = false; UI.locationInput.focus();
         }
 
-        UI.addHangoutBtn.addEventListener('click', () => {
-            if (isHistoryMode) {
-                isHistoryMode = false;
-                UI.infoBtn.classList.remove('active');
-                UI.modeIndicator.classList.add('hidden');
-                renderMarkersAndList();
-            }
-            openModal(false);
-        });
-        
+        UI.addHangoutBtn.addEventListener('click', () => { if (isHistoryMode) { isHistoryMode = false; UI.infoBtn.classList.remove('active'); UI.modeIndicator.classList.add('hidden'); renderMarkersAndList(); } openModal(false); });
         UI.closeModal.addEventListener('click', () => UI.modal.classList.add('hidden'));
 
-        UI.intentions.addEventListener('click', (e) => {
-            if (e.target.classList.contains('chip')) {
-                const val = e.target.dataset.val;
-                e.target.classList.toggle('selected');
-                if (selectedIntentions.includes(val)) selectedIntentions = selectedIntentions.filter(i => i !== val);
-                else selectedIntentions.push(val);
-            }
-        });
+        UI.intentions.addEventListener('click', e => { if (e.target.classList.contains('chip')) { const v = e.target.dataset.val; e.target.classList.toggle('selected'); if (selectedIntentions.includes(v)) selectedIntentions = selectedIntentions.filter(i => i !== v); else selectedIntentions.push(v); } });
 
-        UI.friendInput.addEventListener('input', (e) => {
-            const val = e.target.value.toLowerCase().trim();
-            if (!val) {
-                UI.friendSuggestions.classList.add('hidden');
-                return;
-            }
-
-            const filtered = registeredUsers.filter(u => 
-                u.display.toLowerCase().includes(val) && 
-                u.display !== currentUser.display &&
-                !selectedFriends.includes(u.display)
-            );
-
+        UI.friendInput.addEventListener('input', e => {
+            const v = e.target.value.toLowerCase().trim();
+            if (!v) { UI.friendSuggestions.classList.add('hidden'); return; }
+            const filtered = registeredUsers.filter(u => u.display.toLowerCase().includes(v) && u.display !== currentUser.display && !selectedFriends.includes(u.display));
             if (filtered.length > 0) {
-                UI.friendSuggestions.innerHTML = filtered.map(u => `
-                    <div class="suggestion-item" onclick="selectFriendSuggestion('${u.display}')">${u.display}</div>
-                `).join('');
+                UI.friendSuggestions.innerHTML = filtered.map(u => `<div class="suggestion-item" onclick="selectFriendSuggestion('${u.display}')">${u.display}</div>`).join('');
                 UI.friendSuggestions.classList.remove('hidden');
-            } else {
-                UI.friendSuggestions.classList.add('hidden');
-            }
+            } else UI.friendSuggestions.classList.add('hidden');
         });
 
-        window.selectFriendSuggestion = (name) => {
-            UI.friendInput.value = name;
-            UI.friendSuggestions.classList.add('hidden');
-            UI.addFriendBtn.click();
-        };
-
-        UI.addFriendBtn.addEventListener('click', () => {
-            const name = UI.friendInput.value.trim();
-            if (name && !selectedFriends.includes(name)) {
-                selectedFriends.push(name);
-                renderFriends();
-                UI.friendInput.value = "";
-                UI.friendSuggestions.classList.add('hidden');
-            }
-        });
-
-        function renderFriends() {
-            UI.friendsList.innerHTML = selectedFriends.map(f => `
-                <div class="chip selected" style="font-size:14px; margin-right:5px;">${f} <span onclick="removeFriend('${f}')" style="margin-left:5px; color:red;">×</span></div>
-            `).join('');
-        }
-
-        window.removeFriend = (name) => {
-            selectedFriends = selectedFriends.filter(f => f !== name);
-            renderFriends();
-        };
+        window.selectFriendSuggestion = n => { UI.friendInput.value = n; UI.friendSuggestions.classList.add('hidden'); UI.addFriendBtn.click(); };
+        UI.addFriendBtn.addEventListener('click', () => { const n = UI.friendInput.value.trim(); if (n && !selectedFriends.includes(n)) { selectedFriends.push(n); renderFriends(); UI.friendInput.value = ""; UI.friendSuggestions.classList.add('hidden'); } });
+        function renderFriends() { UI.friendsList.innerHTML = selectedFriends.map(f => `<div class="chip selected" style="font-size:14px; margin-right:5px;">${f} <span onclick="removeFriend('${f}')" style="margin-left:5px; color:red;">×</span></div>`).join(''); }
+        window.removeFriend = n => { selectedFriends = selectedFriends.filter(f => f !== n); renderFriends(); };
 
         function initSlider() {
             if (timeSliderInstance) timeSliderInstance.destroy();
-            const now = new Date();
-            const currentMins = now.getHours() * 60 + now.getMinutes();
-            noUiSlider.create(UI.slider, {
-                start: [currentMins, Math.min(1439, currentMins + 120)],
-                connect: true,
-                range: { 'min': 0, 'max': 1440 },
-                step: 15, margin: 30
-            });
+            const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes();
+            noUiSlider.create(UI.slider, { start: [cur, Math.min(1439, cur + 120)], connect: true, range: { 'min': 0, 'max': 1440 }, step: 15, margin: 30 });
             timeSliderInstance = UI.slider.noUiSlider;
-            timeSliderInstance.on('update', values => {
-                const startStr = minutesToTime(values[0]);
-                const endStr = UI.openEnded.checked ? "OPEN" : minutesToTime(values[1]);
-                UI.timeDisplay.innerText = `${startStr} — ${endStr}`;
-            });
+            timeSliderInstance.on('update', v => { UI.timeDisplay.innerText = `${minutesToTime(v[0])} — ${UI.openEnded.checked ? "OPEN" : minutesToTime(v[1])}`; });
         }
 
-        UI.openEnded.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                timeSliderInstance.set([null, 1440]);
-                UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'none';
-            } else {
-                UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'block';
-                const s = parseFloat(timeSliderInstance.get()[0]);
-                timeSliderInstance.set([null, Math.min(1440, s + 120)]);
-            }
+        UI.openEnded.addEventListener('change', e => {
+            if (e.target.checked) { timeSliderInstance.set([null, 1440]); UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'none'; }
+            else { UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'block'; const s = parseFloat(timeSliderInstance.get()[0]); timeSliderInstance.set([null, Math.min(1440, s + 120)]); }
             timeSliderInstance.set(timeSliderInstance.get());
         });
 
-        function initJoinSlider() {
-            if (joinSliderInstance) joinSliderInstance.destroy();
-            const now = new Date();
-            const currentMins = now.getHours() * 60 + now.getMinutes();
-            noUiSlider.create(UI.joinSlider, {
-                start: [currentMins, 1440],
-                connect: true,
-                range: { 'min': 0, 'max': 1440 },
-                step: 15, margin: 30
-            });
-            joinSliderInstance = UI.joinSlider.noUiSlider;
-            joinSliderInstance.on('update', values => {
-                const startStr = minutesToTime(values[0]);
-                const endStr = UI.joinOpenEnded.checked ? "OPEN" : minutesToTime(values[1]);
-                UI.joinTimeDisplay.innerText = `${startStr} — ${endStr}`;
-            });
-            UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'none';
-        }
+        function minutesToTime(mins) { let h = Math.floor(mins / 60) % 24; let m = Math.floor(mins % 60); return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; }
 
-        UI.joinOpenEnded.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                joinSliderInstance.set([null, 1440]);
-                UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'none';
-            } else {
-                UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'block';
-                const s = parseFloat(joinSliderInstance.get()[0]);
-                joinSliderInstance.set([null, Math.min(1440, s + 120)]);
-            }
-            joinSliderInstance.set(joinSliderInstance.get());
-        });
-
-        function minutesToTime(mins) {
-            let h = Math.floor(mins / 60) % 24;
-            let m = Math.floor(mins % 60);
-            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        }
-
-        function listenForUsers() {
-            db.ref('users').on('value', (snap) => {
-                registeredUsers = [];
-                snap.forEach(doc => {
-                    registeredUsers.push(doc.val());
-                });
-            });
-        }
-
-        function closeError() { UI.errorToast.classList.add('hidden'); }
-        function showError(msg) {
-            UI.modal.classList.add('hidden'); 
-            UI.errorMsg.innerText = msg;
-            UI.errorToast.classList.remove('hidden');
-        }
-
-        window.editEntry = (id) => {
-            const data = allHangouts[id];
-            if (data) {
-                openModal(false, { id, ...data });
-            }
-        };
+        function listenForUsers() { db.ref('users').on('value', snap => { registeredUsers = []; snap.forEach(doc => registeredUsers.push(doc.val())); }); }
 
         window.promptLeave = (id, isHost) => {
             pendingAction = { type: 'leave', id, isHost };
-            UI.confirmModalTitle.innerText = "LEAVE NOW?";
-            UI.confirmModalText.innerText = "YOUR STAY WILL END IMMEDIATELY.";
-            UI.confirmModal.classList.remove('hidden');
+            UI.confirmModalTitle.innerText = "LEAVE NOW?"; UI.confirmModalText.innerText = "YOUR STAY WILL END IMMEDIATELY."; UI.confirmModal.classList.remove('hidden');
         };
 
-        UI.editDeleteBtn.addEventListener('click', () => {
-            pendingAction = { type: 'delete', id: editingId };
-            UI.confirmModalTitle.innerText = "DELETE ENTRY?";
-            UI.confirmModalText.innerText = "REMOVING FROM MAP COMPLETELY.";
-            UI.confirmModal.classList.remove('hidden');
-        });
+        UI.editDeleteBtn.addEventListener('click', () => { pendingAction = { type: 'delete', id: editingId }; UI.confirmModalTitle.innerText = "DELETE ENTRY?"; UI.confirmModalText.innerText = "REMOVING FROM MAP COMPLETELY."; UI.confirmModal.classList.remove('hidden'); });
 
         UI.confirmYesBtn.addEventListener('click', async () => {
             if (pendingAction) {
-                if (pendingAction.type === 'delete') {
-                    await db.ref('hangouts/' + pendingAction.id).remove();
-                    UI.modal.classList.add('hidden');
-                } else if (pendingAction.type === 'leave') {
-                    const now = new Date();
-                    const nowStr = minutesToTime(now.getHours() * 60 + now.getMinutes());
-                    
+                if (pendingAction.type === 'delete') { await db.ref('hangouts/' + pendingAction.id).remove(); UI.modal.classList.add('hidden'); }
+                else if (pendingAction.type === 'leave') {
+                    const nowStr = minutesToTime(new Date().getHours() * 60 + new Date().getMinutes());
                     if (pendingAction.isHost) {
-                        const hangout = allHangouts[pendingAction.id];
-                        const joiners = hangout.joiners ? Object.values(hangout.joiners) : [];
-                        const activeJoiners = joiners.filter(j => {
-                            if (j.end_time === "Open") return true;
-                            const [eh, em] = j.end_time.split(':').map(Number);
-                            return (eh * 60 + em) > (now.getHours() * 60 + now.getMinutes());
-                        });
-
-                        if (activeJoiners.length > 0) {
-                            const newHost = activeJoiners[0];
-                            await db.ref(`hangouts/${pendingAction.id}/joiners/${newHost.name}`).remove();
-                            await db.ref(`hangouts/${pendingAction.id}`).update({
-                                host: newHost.display,
-                                host_id: newHost.name,
-                                start_time: newHost.start_time,
-                                end_time: newHost.end_time
-                            });
-                        } else {
-                            await db.ref(`hangouts/${pendingAction.id}`).update({ end_time: nowStr });
-                        }
-                    } else {
-                        await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
-                    }
+                        const h = allHangouts[pendingAction.id]; const joiners = h.joiners ? Object.values(h.joiners) : [];
+                        const activeJ = joiners.filter(j => { if (j.end_time === "Open") return true; const [eh, em] = j.end_time.split(':').map(Number); return (eh * 60 + em) > (new Date().getHours() * 60 + new Date().getMinutes()); });
+                        if (activeJ.length > 0) {
+                            const newH = activeJ[0]; await db.ref(`hangouts/${pendingAction.id}/joiners/${newH.name}`).remove();
+                            await db.ref(`hangouts/${pendingAction.id}`).update({ host: newH.display, host_id: newH.name, start_time: newH.start_time, end_time: newH.end_time });
+                        } else await db.ref(`hangouts/${pendingAction.id}`).update({ end_time: nowStr });
+                    } else await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
                 }
             }
-            UI.confirmModal.classList.add('hidden');
-            pendingAction = null;
+            UI.confirmModal.classList.add('hidden'); pendingAction = null;
         });
 
-        UI.confirmNoBtn.addEventListener('click', () => {
-            UI.confirmModal.classList.add('hidden');
-            pendingAction = null;
-        });
+        UI.confirmNoBtn.addEventListener('click', () => { UI.confirmModal.classList.add('hidden'); pendingAction = null; });
 
-        window.joinEntry = (id) => {
-            pendingJoinId = id;
-            UI.joinModal.classList.remove('hidden');
-            initJoinSlider();
-        };
+        window.joinEntry = id => { pendingJoinId = id; UI.joinModal.classList.remove('hidden'); initJoinSlider(); };
+        function initJoinSlider() {
+            if (joinSliderInstance) joinSliderInstance.destroy();
+            const cur = new Date().getHours() * 60 + new Date().getMinutes();
+            noUiSlider.create(UI.joinSlider, { start: [cur, 1440], connect: true, range: { 'min': 0, 'max': 1440 }, step: 15, margin: 30 });
+            joinSliderInstance = UI.joinSlider.noUiSlider;
+            joinSliderInstance.on('update', v => { UI.joinTimeDisplay.innerText = `${minutesToTime(v[0])} — ${UI.joinOpenEnded.checked ? "OPEN" : minutesToTime(v[1])}`; });
+            UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'none';
+        }
+        UI.joinOpenEnded.addEventListener('change', e => { if (e.target.checked) { joinSliderInstance.set([null, 1440]); UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'none'; } else { UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'block'; joinSliderInstance.set(joinSliderInstance.get()); } });
 
         UI.joinConfirmBtn.addEventListener('click', async () => {
             if (pendingJoinId) {
-                const vals = joinSliderInstance.get();
-                const joinData = {
-                    name: currentUser.name,
-                    display: currentUser.display,
-                    start_time: minutesToTime(vals[0]),
-                    end_time: UI.joinOpenEnded.checked ? "Open" : minutesToTime(vals[1])
-                };
-                await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set(joinData);
-                UI.joinModal.classList.add('hidden');
-                pendingJoinId = null;
+                const v = joinSliderInstance.get();
+                await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({ name: currentUser.name, display: currentUser.display, start_time: minutesToTime(v[0]), end_time: UI.joinOpenEnded.checked ? "Open" : minutesToTime(v[1]) });
+                UI.joinModal.classList.add('hidden'); pendingJoinId = null;
             }
         });
-
-        UI.joinCancelBtn.addEventListener('click', () => {
-            UI.joinModal.classList.add('hidden');
-            pendingJoinId = null;
-        });
+        UI.joinCancelBtn.addEventListener('click', () => { UI.joinModal.classList.add('hidden'); pendingJoinId = null; });
 
         UI.saveBtn.addEventListener('click', async () => {
-            const locName = UI.locationInput.value.trim();
-            if (!locName) return;
-            UI.saveBtn.innerText = "WAIT...";
-            UI.saveBtn.disabled = true;
-
-            let finalCoords = clickedCoords;
-            if (!finalCoords) {
+            const loc = UI.locationInput.value.trim(); if (!loc) return;
+            UI.saveBtn.innerText = "WAIT..."; UI.saveBtn.disabled = true;
+            let coords = clickedCoords;
+            if (!coords) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locName + ', Zurich')}`);
-                    const data = await res.json();
-                    if (data && data.length > 0) {
-                        finalCoords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-                    } else {
-                        showError("BAR NOT FOUND. CLICK ON MAP TO ENTER LOCATION.");
-                        UI.saveBtn.disabled = false;
-                        UI.saveBtn.innerText = editingId ? "UPDATE" : "BROADCAST";
-                        return;
-                    }
-                } catch (e) {
-                    showError("NETWORK ERROR.");
-                    UI.saveBtn.disabled = false;
-                    return;
-                }
+                    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc + ', Zurich')}`);
+                    const d = await r.json();
+                    if (d.length > 0) coords = { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+                    else { UI.errorMsg.innerText = "BAR NOT FOUND. CLICK MAP."; UI.errorToast.classList.remove('hidden'); UI.saveBtn.disabled = false; UI.saveBtn.innerText = editingId ? "UPDATE" : "BROADCAST"; return; }
+                } catch (e) { UI.saveBtn.disabled = false; return; }
             }
-
-            const vals = timeSliderInstance.get();
-            const hangout = {
-                host: currentUser.display,
-                host_id: currentUser.name,
-                location_name: locName,
-                coordinates: { lat: finalCoords.lat, lng: finalCoords.lng },
-                start_time: minutesToTime(vals[0]),
-                end_time: UI.openEnded.checked ? "Open" : minutesToTime(vals[1]),
-                intentions: selectedIntentions,
-                friends: selectedFriends,
-                timestamp: editingId ? (allHangouts[editingId].timestamp || Date.now()) : Date.now()
-            };
-
-            try {
-                if (editingId) {
-                    await db.ref('hangouts/' + editingId).update(hangout);
-                } else {
-                    await db.ref('hangouts').push(hangout);
-                }
-                UI.modal.classList.add('hidden');
-                map.flyTo([hangout.coordinates.lat, hangout.coordinates.lng], 16, { duration: 1.5 });
-            } catch (e) {
-                UI.saveBtn.disabled = false;
-            }
+            const v = timeSliderInstance.get();
+            const h = { host: currentUser.display, host_id: currentUser.name, location_name: loc, coordinates: { lat: coords.lat, lng: coords.lng }, start_time: minutesToTime(v[0]), end_time: UI.openEnded.checked ? "Open" : minutesToTime(v[1]), intentions: selectedIntentions, friends: selectedFriends, timestamp: editingId ? (allHangouts[editingId].timestamp || Date.now()) : Date.now() };
+            if (editingId) await db.ref('hangouts/' + editingId).update(h);
+            else await db.ref('hangouts').push(h);
+            UI.modal.classList.add('hidden'); map.flyTo([h.coordinates.lat, h.coordinates.lng], 16, { duration: 1.5 });
         });
 
-        function listenForHangouts() {
-            db.ref('hangouts').on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                allHangouts = data;
-                renderMarkersAndList();
-            });
-        }
+        function listenForHangouts() { db.ref('hangouts').on('value', snap => { allHangouts = snap.val() || {}; renderMarkersAndList(); }); }
 
         function createMarker(id, data) {
-            let status = 'history';
-            if (!isHistoryMode) {
-                status = getStatus(data.start_time, data.end_time);
-            }
-            
-            const initial = data.host ? data.host.charAt(0) : '?';
-            const icon = L.divIcon({
-                className: 'leaflet-div-icon',
-                html: `<div class="custom-marker marker-${status}">${initial}</div>`,
-                iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -20]
-            });
-
-            const dateStr = data.timestamp ? new Date(data.timestamp).toLocaleDateString() : 'Today';
-            const manualParty = [data.host, ...(data.friends || [])].join(', ');
+            let s = isHistoryMode ? 'history' : getStatus(data.start_time, data.end_time);
+            const icon = L.divIcon({ className: 'leaflet-div-icon', html: `<div class="custom-marker marker-${s}">${data.host.charAt(0)}</div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -20] });
+            const party = [data.host, ...(data.friends || [])].join(', ');
             const joiners = data.joiners ? Object.values(data.joiners) : [];
-            const joinersHtml = joiners.map(j => `<li>${j.display} (${j.start_time} - ${j.end_time})</li>`).join('');
-            
+            const jHtml = joiners.map(j => `<li>${j.display} (${j.start_time}-${j.end_time})</li>`).join('');
             const isOwner = (data.host_id === currentUser.name) && !isHistoryMode;
+            const activeJoiner = data.joiners && data.joiners[currentUser.name] && getStatus(data.joiners[currentUser.name].start_time, data.joiners[currentUser.name].end_time) !== 'red';
+            let txt = isHistoryMode ? new Date(data.timestamp).toLocaleDateString() : (s === 'yellow' ? data.host.toUpperCase() + ' WILL BE HERE' : (s === 'red' ? data.host.toUpperCase() + ' WAS HERE' : data.host.toUpperCase() + ' IS HERE'));
             
-            const currentJoinerEntry = data.joiners ? data.joiners[currentUser.name] : null;
-            const isActiveJoiner = currentJoinerEntry && getStatus(currentJoinerEntry.start_time, currentJoinerEntry.end_time) !== 'red';
-
-            // DYNAMIC STATUS TEXT
-            let statusText = "";
-            if (isHistoryMode) {
-                statusText = dateStr;
-            } else {
-                const hostName = data.host ? data.host.toUpperCase() : 'FRIEND';
-                if (status === 'yellow') statusText = hostName + ' WILL BE HERE';
-                else if (status === 'red') statusText = hostName + ' WAS HERE';
-                else statusText = hostName + ' IS HERE';
-            }
-
-            const popup = `
-                <div style="text-align: center; font-family:'VT323'; font-size:18px; max-width: 200px;">
-                    <strong style="font-family:'Press Start 2P'; font-size:10px;">${data.location_name}</strong><br>
-                    <span style="display:block; margin: 4px 0;">${statusText}</span>
-                    <small style="color:#777;">${data.start_time} - ${data.end_time}</small>
-                    <div style="margin-top:5px; border-top:1px solid #ccc; padding-top:5px;">
-                        <span style="font-size:14px; display:block;">PARTY:</span>
-                        <span style="font-size:16px;">${manualParty}</span>
-                        ${joinersHtml ? `
-                            <span style="font-size:14px; display:block; margin-top:5px; color:var(--success);">JOINED:</span>
-                            <ul style="list-style:none; padding:0; margin:0; font-size:14px; color:var(--success);">
-                                ${joinersHtml}
-                            </ul>
-                        ` : ''}
-                    </div>
-                    <div class="popup-controls">
-                    ${isOwner ? `
-                            <button class="edit-btn" onclick="editEntry('${id}')">EDIT</button>
-                            <button class="leave-btn" onclick="promptLeave('${id}', true)">LEAVE NOW</button>
-                    ` : `
-                        ${isActiveJoiner ? `<button class="leave-btn" onclick="promptLeave('${id}', false)">LEAVE NOW</button>` : ''}
-                        ${!isActiveJoiner && !isHistoryMode ? `<button class="join-btn" onclick="joinEntry('${id}')">JOIN</button>` : ''}
-                    `}
-                    </div>
-                </div>
-            `;
-            
+            const popup = `<div style="text-align: center; font-family:'VT323'; font-size:18px; max-width: 200px;">
+                <strong style="font-family:'Press Start 2P'; font-size:10px;">${data.location_name}</strong><br><span>${txt}</span><br><small>${data.start_time} - ${data.end_time}</small>
+                <div style="margin-top:5px; border-top:1px solid #ccc; padding-top:5px;"><span style="font-size:14px; display:block;">PARTY:</span><span style="font-size:16px;">${party}</span>${jHtml ? `<span style="font-size:14px; display:block; margin-top:5px; color:var(--success);">JOINED:</span><ul style="list-style:none; padding:0; margin:0; font-size:14px; color:var(--success);">${jHtml}</ul>` : ''}</div>
+                <div class="popup-controls">${isOwner ? `<button class="edit-btn" onclick="editEntry('${id}')">EDIT</button><button class="leave-btn" onclick="promptLeave('${id}', true)">LEAVE</button>` : `${activeJoiner ? `<button class="leave-btn" onclick="promptLeave('${id}', false)">LEAVE</button>` : `${!isHistoryMode ? `<button class="join-btn" onclick="joinEntry('${id}')">JOIN</button>` : ''}`} `}</div>
+            </div>`;
             markers[id] = L.marker([data.coordinates.lat, data.coordinates.lng], { icon }).addTo(map).bindPopup(popup);
         }
 
-        function getStatus(start, end) {
-            const now = new Date();
-            const cur = now.getHours() * 60 + now.getMinutes();
-            const [sh, sm] = (start || "00:00").split(':').map(Number);
-            const startM = sh * 60 + sm;
-            
-            if (cur < startM) return 'yellow';
-            
-            if (end === "Open") return 'green';
-            const [eh, em] = (end || "23:59").split(':').map(Number);
-            const endM = eh * 60 + em;
-
-            if (cur >= endM) return 'red';
-            return 'green';
+        function getStatus(s, e) {
+            const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes();
+            const [sh, sm] = (s || "00:00").split(':').map(Number);
+            if (cur < (sh * 60 + sm)) return 'yellow';
+            if (e === "Open") return 'green';
+            const [eh, em] = (e || "23:59").split(':').map(Number);
+            return (cur >= (eh * 60 + em)) ? 'red' : 'green';
         }
     </script>
 </body>
-</html> eof
-
-
-
+</html>
