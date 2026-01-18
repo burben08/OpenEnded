@@ -23,33 +23,31 @@
             --history: #6f42c1; --bg-color: #f8f9fa; --grid-color: rgba(0, 0, 0, 0.08);
         }
 
-        /* Essential Reset for Mobile */
+        /* Essential Reset and Background Grid */
         html, body { 
             margin: 0; padding: 0; 
             height: 100%; height: 100dvh; 
             width: 100%; overflow: hidden; 
             position: fixed;
             background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
         }
 
-        body { 
-            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); 
-            background-size: 20px 20px; 
-            font-family: 'VT323', monospace; 
-        }
-
+        body { font-family: 'VT323', monospace; }
         .pixel-font { font-family: 'Press Start 2P', cursive; font-size: 11px; }
         .hidden { display: none !important; }
 
-        /* Login Screen */
+        /* App Containers */
         #login-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            padding: 20px; box-sizing: border-box; z-index: 5000; background: var(--bg-color);
+            padding: 20px; box-sizing: border-box; z-index: 5000; background: inherit;
         }
         .login-card { background: white; border: 4px solid #333; padding: 30px; width: 100%; max-width: 320px; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); }
         
-        /* Map Screen */
         #map-screen { height: 100%; width: 100%; position: relative; }
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
 
@@ -64,7 +62,7 @@
 
         .fab { position: absolute; bottom: calc(35px + env(safe-area-inset-bottom, 0px)); left: 15px; width: 65px; height: 65px; background-color: var(--accent); color: white; font-size: 35px; border: 4px solid #000; box-shadow: 6px 6px 0px #000; }
 
-        /* Modals & Panels */
+        /* Panels & Modals */
         .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: flex-end; }
         .modal-content { background: white; border: 4px solid #333; width: 100%; max-width: 500px; border-bottom: none; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-sizing: border-box; animation: slideUp 0.3s steps(4); max-height: 90%; overflow-y: auto; position: relative; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -73,6 +71,14 @@
         #hangouts-panel { position: fixed; top: 0; left: 0; width: 100%; background: white; z-index: 1050; max-height: 65dvh; overflow-y: auto; border-bottom: 4px solid #333; transform: translateY(-100%); transition: transform 0.3s steps(4); padding-top: calc(80px + env(safe-area-inset-top)); }
         #hangouts-panel.open { transform: translateY(0); }
         .list-item { padding: 15px 20px; border-bottom: 2px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        
+        /* Marker Styles */
+        .leaflet-div-icon { background: transparent; border: none; }
+        .custom-marker { width: 32px; height: 32px; border-radius: 4px; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 3px solid black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3); font-size: 18px; text-transform: uppercase; }
+        .marker-green { background-color: var(--success); }
+        .marker-yellow { background-color: var(--warning); color: #000; }
+        .marker-red { background-color: var(--danger); }
+        .marker-history { background-color: var(--history); }
 
         /* Form elements */
         input[type="text"] { padding: 10px; font-size: 20px; font-family: 'VT323', monospace; border: 3px solid #333; width: 100%; box-sizing: border-box; }
@@ -122,7 +128,7 @@
     <div id="hangout-modal" class="modal hidden">
         <div class="modal-content">
             <span id="close-modal" class="close">×</span>
-            <h2 class="pixel-font">NEUE ITRAG</h2>
+            <h2 class="pixel-font" id="modal-title">NEUE ITRAG</h2>
             <input type="text" id="location-name" placeholder="WO GENAU?">
             <div id="time-display" class="pixel-font" style="color: var(--primary); margin: 15px 0;">00:00 — 00:00</div>
             <div id="time-slider" style="margin: 10px 10px 30px 10px;"></div>
@@ -130,6 +136,7 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -162,6 +169,10 @@
             loginBtn: document.getElementById('login-btn'),
             statusMsg: document.getElementById('status-msg'),
             infoBtn: document.getElementById('info-btn'),
+            listToggleBtn: document.getElementById('list-toggle-btn'),
+            addHangoutBtn: document.getElementById('add-hangout-btn'),
+            hangoutModal: document.getElementById('hangout-modal'),
+            closeModal: document.getElementById('close-modal'),
             enableNotifBtn: document.getElementById('enable-notif-btn'),
             notifStatus: document.getElementById('notif-status')
         };
@@ -171,18 +182,35 @@
 
         // --- NOTIFICATIONS ---
         async function setupNotifications() {
-            if (!messaging) return;
+            if (!messaging) {
+                UI.notifStatus.innerText = "BROWSER ERROR";
+                return;
+            }
+            UI.notifStatus.innerText = "REQUESTING...";
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                    // Force service worker registration check
+                    const reg = await navigator.serviceWorker.ready;
+                    const token = await messaging.getToken({ 
+                        vapidKey: VAPID_KEY,
+                        serviceWorkerRegistration: reg
+                    });
+                    
                     if (token) {
                         await db.ref(`users/${currentUser.name}/fcmToken`).set(token);
-                        UI.notifStatus.innerText = "TOKEN GENERATED! CHECK DB.";
+                        UI.notifStatus.innerText = "SUCCESS! TOKEN IN DB.";
                         UI.enableNotifBtn.classList.add('hidden');
+                    } else {
+                        UI.notifStatus.innerText = "TOKEN ERROR";
                     }
+                } else {
+                    UI.notifStatus.innerText = "PERMISSION DENIED";
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error(err); 
+                UI.notifStatus.innerText = "ERROR: " + err.message;
+            }
         }
         UI.enableNotifBtn.addEventListener('click', setupNotifications);
 
@@ -208,10 +236,36 @@
             initMap();
         });
 
+        UI.addHangoutBtn.addEventListener('click', () => {
+            UI.hangoutModal.classList.remove('hidden');
+        });
+
+        UI.closeModal.addEventListener('click', () => {
+            UI.hangoutModal.classList.add('hidden');
+        });
+
         window.addEventListener('load', () => {
             const saved = localStorage.getItem('hangout_user');
-            if (saved) { currentUser = JSON.parse(saved); UI.loginBtn.click(); }
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register('firebase-messaging-sw.js');
+            if (saved) { 
+                currentUser = JSON.parse(saved); 
+                UI.usernameInput.value = currentUser.display;
+                UI.loginBtn.click(); 
+            }
+            
+            if ('serviceWorker' in navigator) {
+                // Determine the scope for GitHub Pages compatibility
+                const scope = window.location.pathname.includes('index.html') 
+                    ? window.location.pathname.replace('index.html', '') 
+                    : window.location.pathname;
+
+                navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: scope })
+                .then(reg => {
+                    console.log("Service Worker Registered:", reg.scope);
+                })
+                .catch(err => {
+                    console.warn("SW Registration failed:", err.message);
+                });
+            }
         });
 
         UI.infoBtn.addEventListener('click', () => UI.infoModal.classList.remove('hidden'));
