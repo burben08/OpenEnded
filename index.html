@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Zurich Hangout</title>
+    <title>ÖPER UME?</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -25,67 +25,114 @@
             --history: #6f42c1; --bg-color: #f8f9fa; --grid-color: rgba(0, 0, 0, 0.08);
         }
 
-        html, body { margin: 0; padding: 0; height: 100dvh; width: 100%; overflow: hidden; position: fixed; }
-        body { background-color: var(--bg-color); background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size: 20px 20px; font-family: 'VT323', monospace; font-size: 20px; }
+        /* Essential Mobile Fix: Use dvh and prevent scrolling on body */
+        html, body { 
+            margin: 0; padding: 0; 
+            height: 100%; height: 100dvh; 
+            width: 100%; overflow: hidden; 
+            position: fixed;
+            background-color: var(--bg-color);
+        }
+
+        body { 
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); 
+            background-size: 20px 20px; 
+            font-family: 'VT323', monospace; 
+            font-size: 20px; 
+        }
+
         .pixel-font { font-family: 'Press Start 2P', cursive; font-size: 12px; line-height: 1.5; }
         .hidden { display: none !important; }
 
-        /* Shared Components */
-        .login-card, .modal-content { background: white; border: 4px solid #333; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); image-rendering: pixelated; }
+        /* Login Screen */
         #login-screen { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .login-card { padding: 30px; width: 100%; max-width: 320px; }
-        input[type="text"] { padding: 12px 16px; font-size: 22px; font-family: 'VT323', monospace; border: 3px solid #333; outline: none; width: 100%; box-sizing: border-box; }
+        .login-card { background: white; border: 4px solid #333; padding: 30px; width: 100%; max-width: 320px; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); }
         
+        input[type="text"] { padding: 12px 16px; font-size: 22px; font-family: 'VT323', monospace; border: 3px solid #333; outline: none; width: 100%; box-sizing: border-box; background: white; }
         .primary-btn { width: 100%; background-color: var(--primary); padding: 15px; font-family: 'Press Start 2P', cursive; font-size: 12px; color: white; border: 3px solid #000; box-shadow: 5px 5px 0px #000; cursor: pointer; margin-top: 10px; }
         .primary-btn:active { box-shadow: 0px 0px 0px #000; transform: translate(3px, 3px); }
         .danger-btn { background-color: var(--danger); }
         .success-btn { background-color: var(--success); }
 
-        #map-screen { height: 100%; width: 100%; position: relative; }
-        #map { height: 100%; width: 100%; z-index: 1; }
+        /* Map UI Layout Fix */
+        #map-screen { 
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
 
-        /* UI Overlays */
-        #list-toggle-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 1100; background: white; border: 3px solid #333; padding: 10px 20px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 10px; cursor: pointer; }
-        #info-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 15px; z-index: 1100; background: white; border: 3px solid #333; width: 45px; height: 45px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 18px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        #map { flex-grow: 1; z-index: 1; }
+
+        /* Buttons Container - Anchors everything properly */
+        .top-ui-layer {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding-top: env(safe-area-inset-top, 15px);
+            z-index: 1100;
+            pointer-events: none; /* Let clicks pass through to map if not on a button */
+        }
+
+        #list-toggle-btn, #info-btn { pointer-events: auto; }
+
+        #list-toggle-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: white; border: 3px solid #333; padding: 10px 20px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 10px; cursor: pointer; white-space: nowrap; }
+        #info-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 15px; background: white; border: 3px solid #333; width: 45px; height: 45px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 18px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
         #info-btn.active { background-color: var(--history); color: white; }
         
+        #mode-indicator { position: absolute; top: calc(75px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: var(--history); color: white; padding: 5px 15px; border: 2px solid #000; font-family: 'Press Start 2P', cursive; font-size: 8px; z-index: 1090; }
+
         #hangouts-panel { position: fixed; top: 0; left: 0; width: 100%; background: white; z-index: 1050; max-height: 60dvh; overflow-y: auto; border-bottom: 4px solid #333; transform: translateY(-100%); transition: transform 0.3s steps(4); padding-top: calc(70px + env(safe-area-inset-top)); }
         #hangouts-panel.open { transform: translateY(0); }
         .list-item { padding: 16px 20px; border-bottom: 2px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
-        .fab { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); left: 20px; width: 60px; height: 60px; background-color: var(--accent); color: white; font-size: 30px; border: 4px solid #000; box-shadow: 5px 5px 0px #000; z-index: 1000; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        /* Floating Action Button - Positioned safely */
+        .fab { 
+            position: absolute; 
+            bottom: calc(40px + env(safe-area-inset-bottom, 20px)); 
+            left: 20px; 
+            width: 60px; height: 60px; 
+            background-color: var(--accent); color: white; 
+            font-size: 30px; border: 4px solid #000; 
+            box-shadow: 5px 5px 0px #000; 
+            z-index: 1000; 
+            cursor: pointer; 
+            display: flex; justify-content: center; align-items: center; 
+        }
 
         /* Modals */
         .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: flex-end; }
-        .modal-content { width: 100%; max-width: 500px; border-bottom: none; padding: 24px; box-sizing: border-box; animation: slideUp 0.3s steps(4); max-height: 90%; overflow-y: auto; position: relative; }
+        .modal-content { background: white; border: 4px solid #333; width: 100%; max-width: 500px; border-bottom: none; padding: 24px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); box-sizing: border-box; animation: slideUp 0.3s steps(4); max-height: 90%; overflow-y: auto; position: relative; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .close { position: absolute; top: 10px; right: 15px; font-size: 30px; cursor: pointer; }
 
-        /* Notifications Banner */
-        #notif-banner { position: absolute; bottom: calc(100px + env(safe-area-inset-bottom)); left: 20px; right: 20px; background: white; border: 3px solid #000; padding: 15px; z-index: 999; box-shadow: 4px 4px 0px #000; text-align: center; }
+        #notif-banner { position: absolute; bottom: calc(110px + env(safe-area-inset-bottom)); left: 20px; right: 20px; background: white; border: 3px solid #000; padding: 15px; z-index: 999; box-shadow: 4px 4px 0px #000; text-align: center; }
 
-        /* Chips & UI Elements */
         .form-group { margin-bottom: 20px; position: relative; }
         .form-group label { display: block; font-family: 'Press Start 2P', cursive; font-size: 10px; margin-bottom: 8px; }
         .chips-container { display: flex; flex-wrap: wrap; gap: 8px; }
         .chip { padding: 6px 12px; border: 2px solid #000; background: white; cursor: pointer; font-family: 'VT323', monospace; font-size: 18px; box-shadow: 3px 3px 0px #ddd; }
         .chip.selected { background-color: var(--primary); color: white; box-shadow: 3px 3px 0px #000; }
+        
         .friend-input-wrapper { display: flex; border: 3px solid #000; }
         #friend-input { border: none; flex-grow: 1; padding: 10px; font-family: 'VT323', monospace; font-size: 20px; outline: none; }
         #add-friend-btn { background-color: #eee; border: none; border-left: 3px solid #000; padding: 0 15px; font-family: 'VT323', monospace; font-weight: bold; cursor: pointer; }
-        #friend-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 3px solid #000; z-index: 2100; max-height: 150px; overflow-y: auto; }
+        #friend-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 3px solid #000; z-index: 2100; max-height: 150px; overflow-y: auto; box-shadow: 5px 5px 0px rgba(0,0,0,0.2); }
         .suggestion-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
         .suggestion-item:hover { background-color: var(--primary); color: white; }
 
-        /* Markers */
         .leaflet-div-icon { background: transparent; border: none; }
         .custom-marker { width: 32px; height: 32px; border-radius: 4px; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 3px solid black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3); font-size: 18px; text-transform: uppercase; }
         .marker-green { background-color: var(--success); }
         .marker-yellow { background-color: var(--warning); color: #000; }
         .marker-red { background-color: var(--danger); }
         .marker-history { background-color: var(--history); }
+        
         .popup-controls { margin-top: 10px; display: flex; gap: 10px; justify-content: center; border-top: 1px solid #ccc; padding-top: 8px; }
         .edit-btn, .leave-btn, .join-btn { background: #eee; border: 2px solid #000; font-family: 'VT323', monospace; font-size: 16px; padding: 2px 8px; cursor: pointer; }
+        .edit-btn:hover { background: var(--primary); color: white; }
+        .leave-btn:hover { background: var(--danger); color: white; }
+        .join-btn { background: var(--success); color: white; }
     </style>
 </head>
 <body>
@@ -100,12 +147,12 @@
     <div id="error-toast" class="hidden">
         <p class="pixel-font" style="color: var(--danger)">ERROR:</p>
         <p class="pixel-font" id="error-msg"></p>
-        <button onclick="this.parentElement.classList.add('hidden')">OK</button>
+        <button class="primary-btn" onclick="this.parentElement.classList.add('hidden')">OK</button>
     </div>
 
     <!-- CONFIRM MODAL -->
     <div id="confirm-modal" class="modal hidden">
-        <div class="modal-content" style="align-items: center; text-align: center;">
+        <div class="modal-content" style="text-align: center;">
             <h2 id="confirm-modal-title" class="pixel-font confirm-title">CONFIRM?</h2>
             <p id="confirm-modal-text" class="pixel-font" style="font-size: 10px;">ACTION CANNOT BE UNDONE.</p>
             <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
@@ -137,7 +184,7 @@
 
     <div id="login-screen">
         <div class="login-card">
-            <h1 class="pixel-font">ZURICH HANGOUT</h1>
+            <h1 class="pixel-font">ÖPER UME?</h1>
             <div class="input-group">
                 <input type="text" id="username-input" placeholder="YOUR NAME?">
                 <button id="login-btn">ENTER GAME</button>
@@ -148,10 +195,16 @@
 
     <div id="map-screen" class="hidden">
         <div id="map"></div>
-        <button id="info-btn">i</button>
+        
+        <div class="top-ui-layer">
+            <button id="info-btn">i</button>
+            <button id="list-toggle-btn">LOCATIONS <span class="arrow">▼</span></button>
+        </div>
+
         <div id="mode-indicator" class="hidden">HISTORY MODE ACTIVE</div>
-        <button id="list-toggle-btn">LOCATIONS <span class="arrow">▼</span></button>
+        
         <div id="hangouts-panel"><div id="hangouts-list-container"></div></div>
+        
         <button id="add-hangout-btn" class="fab">+</button>
     </div>
 
@@ -176,12 +229,14 @@
             <div class="form-group">
                 <label>MOOD</label>
                 <div class="chips-container" id="intentions-container">
-                    <button class="chip" data-val="Coffee">Coffee</button>
-                    <button class="chip" data-val="Beers">Beers</button>
-                    <button class="chip" data-val="Games">Games</button>
-                    <button class="chip" data-val="Talking">Talking</button>
-                    <button class="chip" data-val="Work">Work</button>
-                    <button class="chip" data-val="Random">Random</button>
+                    <button class="chip" data-val="Coffee">Kaffi-Schwatz</button>
+                    <button class="chip" data-val="Beers">Fübber</button>
+                    <button class="chip" data-val="Reading">Zäme lese</button>
+                    <button class="chip" data-val="Games">Game</button>
+                    <button class="chip" data-val="Fun Work">"Schaffe"</button>
+                    <button class="chip" data-val="Serious Work">Schaffe</button>
+                    <button class="chip" data-val="Drinking">Festplatte lösche</button>
+                    <button class="chip" data-val="Bar Game">Bar Hunt</button>
                 </div>
             </div>
             <div class="form-group">
@@ -214,7 +269,6 @@
             measurementId: "G-S8P7E02CWL"
         };
 
-        // --- PASTE YOUR VAPID KEY HERE ---
         const VAPID_KEY = "Byxz9-OQWwwRPyF6XD8P7Pg5fmmOZCA6QyUQwT_ibMM"; 
 
         firebase.initializeApp(firebaseConfig);
@@ -278,34 +332,37 @@
         let isHistoryMode = false;
         let editingId = null; 
         let pendingAction = null; 
+        let pendingJoinId = null;
 
-        // --- NOTIFICATION LOGIC ---
+        // --- NOTIFICATION BROADCAST LOGIC ---
+        function triggerNotification(title, body) {
+            console.log("Triggering notification:", title, body);
+            // We write to a queue that a Cloud Function would normally pick up
+            db.ref('notification_queue').push({
+                title: title,
+                body: body,
+                timestamp: Date.now(),
+                sender: currentUser.display
+            });
+        }
+
         async function setupNotifications() {
             if (!messaging) return;
-            
             try {
                 const token = await messaging.getToken({ vapidKey: VAPID_KEY });
                 if (token) {
                     await db.ref(`users/${currentUser.name}/fcmToken`).set(token);
                     UI.notifBanner.classList.add('hidden');
                 }
-            } catch (err) {
-                console.error("Notif setup failed:", err);
-            }
+            } catch (err) { console.error("Notif setup failed:", err); }
         }
 
         UI.enableNotifBtn.addEventListener('click', setupNotifications);
 
-        // --- APP FLOW ---
         window.addEventListener('load', () => {
             const saved = localStorage.getItem('hangout_user');
-            if (saved) {
-                currentUser = JSON.parse(saved);
-                enterApp();
-            }
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('firebase-messaging-sw.js');
-            }
+            if (saved) { currentUser = JSON.parse(saved); enterApp(); }
+            if ('serviceWorker' in navigator) { navigator.serviceWorker.register('firebase-messaging-sw.js'); }
         });
 
         UI.loginBtn.addEventListener('click', async () => {
@@ -320,9 +377,7 @@
                     const newUser = { name: nameId, display: nameInput };
                     await db.ref('users/' + nameId).set(newUser);
                     currentUser = newUser;
-                } else {
-                    currentUser = userData;
-                }
+                } else { currentUser = userData; }
                 localStorage.setItem('hangout_user', JSON.stringify(currentUser));
                 enterApp();
             } catch (err) { UI.statusMsg.innerText = "ERROR!"; }
@@ -332,7 +387,6 @@
             UI.loginScreen.classList.add('hidden');
             UI.mapScreen.classList.remove('hidden');
             if (!map) initMap();
-            // Show notification banner if no token saved
             db.ref(`users/${currentUser.name}/fcmToken`).once('value', snap => {
                 if (!snap.exists() && messaging) UI.notifBanner.classList.remove('hidden');
             });
@@ -368,8 +422,7 @@
             markers = {};
             const keys = Object.keys(allHangouts);
             let displayList = [];
-            const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-            const todayTimestamp = todayStart.getTime();
+            const todayTimestamp = new Date().setHours(0,0,0,0);
 
             if (isHistoryMode) {
                 displayList = keys.map(k => ({ id: k, ...allHangouts[k] }))
@@ -484,14 +537,19 @@
                 if (pendingAction.type === 'delete') { await db.ref('hangouts/' + pendingAction.id).remove(); UI.modal.classList.add('hidden'); }
                 else if (pendingAction.type === 'leave') {
                     const nowStr = minutesToTime(new Date().getHours() * 60 + new Date().getMinutes());
+                    const h = allHangouts[pendingAction.id];
                     if (pendingAction.isHost) {
-                        const h = allHangouts[pendingAction.id]; const joiners = h.joiners ? Object.values(h.joiners) : [];
+                        const joiners = h.joiners ? Object.values(h.joiners) : [];
                         const activeJ = joiners.filter(j => { if (j.end_time === "Open") return true; const [eh, em] = j.end_time.split(':').map(Number); return (eh * 60 + em) > (new Date().getHours() * 60 + new Date().getMinutes()); });
                         if (activeJ.length > 0) {
                             const newH = activeJ[0]; await db.ref(`hangouts/${pendingAction.id}/joiners/${newH.name}`).remove();
                             await db.ref(`hangouts/${pendingAction.id}`).update({ host: newH.display, host_id: newH.name, start_time: newH.start_time, end_time: newH.end_time });
                         } else await db.ref(`hangouts/${pendingAction.id}`).update({ end_time: nowStr });
-                    } else await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
+                        triggerNotification("Friend Left", `${currentUser.display} has left ${h.location_name}.`);
+                    } else {
+                        await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
+                        triggerNotification("Friend Left", `${currentUser.display} finished joining at ${h.location_name}.`);
+                    }
                 }
             }
             UI.confirmModal.classList.add('hidden'); pendingAction = null;
@@ -513,7 +571,10 @@
         UI.joinConfirmBtn.addEventListener('click', async () => {
             if (pendingJoinId) {
                 const v = joinSliderInstance.get();
-                await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({ name: currentUser.name, display: currentUser.display, start_time: minutesToTime(v[0]), end_time: UI.joinOpenEnded.checked ? "Open" : minutesToTime(v[1]) });
+                const h = allHangouts[pendingJoinId];
+                const joinTime = minutesToTime(v[0]);
+                await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({ name: currentUser.name, display: currentUser.display, start_time: joinTime, end_time: UI.joinOpenEnded.checked ? "Open" : minutesToTime(v[1]) });
+                triggerNotification("Friend Joined!", `${currentUser.display} joined ${h.host} at ${h.location_name} (starts ${joinTime}).`);
                 UI.joinModal.classList.add('hidden'); pendingJoinId = null;
             }
         });
@@ -532,9 +593,17 @@
                 } catch (e) { UI.saveBtn.disabled = false; return; }
             }
             const v = timeSliderInstance.get();
-            const h = { host: currentUser.display, host_id: currentUser.name, location_name: loc, coordinates: { lat: coords.lat, lng: coords.lng }, start_time: minutesToTime(v[0]), end_time: UI.openEnded.checked ? "Open" : minutesToTime(v[1]), intentions: selectedIntentions, friends: selectedFriends, timestamp: editingId ? (allHangouts[editingId].timestamp || Date.now()) : Date.now() };
+            const startT = minutesToTime(v[0]);
+            const endT = UI.openEnded.checked ? "Open" : minutesToTime(v[1]);
+            const h = { host: currentUser.display, host_id: currentUser.name, location_name: loc, coordinates: { lat: coords.lat, lng: coords.lng }, start_time: startT, end_time: endT, intentions: selectedIntentions, friends: selectedFriends, timestamp: editingId ? (allHangouts[editingId].timestamp || Date.now()) : Date.now() };
+            
             if (editingId) await db.ref('hangouts/' + editingId).update(h);
-            else await db.ref('hangouts').push(h);
+            else {
+                await db.ref('hangouts').push(h);
+                const s = getStatus(startT, endT);
+                const msg = s === 'yellow' ? `${currentUser.display} plans to be at ${loc} (${startT}—${endT}).` : `${currentUser.display} is at ${loc} until ${endT}.`;
+                triggerNotification("New Hangout!", msg);
+            }
             UI.modal.classList.add('hidden'); map.flyTo([h.coordinates.lat, h.coordinates.lng], 16, { duration: 1.5 });
         });
 
