@@ -1,164 +1,166 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ÖPER UME?</title>
     
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23007bff%22/><text y=%22.9em%22 x=%22.1em%22 font-size=%2270%22>📍</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 x=%22.1em%22 font-size=%2270%22>📍</text></svg>">
 
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📍</text></svg>">
-
-    <!-- External Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #007bff; --primary-dark: #0056b3; --accent: #FF5722;
+            --primary: #007bff; --accent: #FF5722;
             --success: #2da44e; --warning: #e3b341; --danger: #cf222e;
             --history: #6f42c1; --bg-color: #f8f9fa; --grid-color: rgba(0, 0, 0, 0.08);
         }
 
-        /* Essential Mobile Fix: Use dvh and prevent scrolling on body */
-        html, body { 
-            margin: 0; padding: 0; 
-            height: 100%; height: 100dvh; 
-            width: 100%; overflow: hidden; 
-            position: fixed;
-            background-color: var(--bg-color);
-        }
-
-        body { 
-            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); 
-            background-size: 20px 20px; 
-            font-family: 'VT323', monospace; 
-            font-size: 20px; 
-        }
-
-        .pixel-font { font-family: 'Press Start 2P', cursive; font-size: 12px; line-height: 1.5; }
+        html, body { margin: 0; padding: 0; height: 100dvh; width: 100%; overflow: hidden; position: fixed; background-color: var(--bg-color); }
+        body { background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size: 20px 20px; font-family: 'VT323', monospace; }
+        .pixel-font { font-family: 'Press Start 2P', cursive; font-size: 11px; }
         .hidden { display: none !important; }
 
-        /* Login Screen */
-        #login-screen { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .login-card { background: white; border: 4px solid #333; padding: 30px; width: 100%; max-width: 320px; box-shadow: 8px 8px 0px rgba(0,0,0,0.1); }
-        
-        input[type="text"] { padding: 12px 16px; font-size: 22px; font-family: 'VT323', monospace; border: 3px solid #333; outline: none; width: 100%; box-sizing: border-box; background: white; }
-        .primary-btn { width: 100%; background-color: var(--primary); padding: 15px; font-family: 'Press Start 2P', cursive; font-size: 12px; color: white; border: 3px solid #000; box-shadow: 5px 5px 0px #000; cursor: pointer; margin-top: 10px; }
-        .primary-btn:active { box-shadow: 0px 0px 0px #000; transform: translate(3px, 3px); }
-        .danger-btn { background-color: var(--danger); }
-        .success-btn { background-color: var(--success); }
+        #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
 
-        /* Map UI Layout Fix */
-        #map-screen { 
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-            position: relative;
-        }
+        /* UI LAYER */
+        .ui-safe-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1100; display: flex; flex-direction: column; justify-content: space-between; padding: calc(15px + env(safe-area-inset-top)) 15px calc(35px + env(safe-area-inset-bottom)) 15px; box-sizing: border-box; }
+        .pixel-btn { pointer-events: auto; background: white; border: 3px solid #333; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px #000; }
 
-        #map { flex-grow: 1; z-index: 1; }
-
-        /* Buttons Container - Anchors everything properly */
-        .top-ui-layer {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            padding-top: env(safe-area-inset-top, 15px);
-            z-index: 1100;
-            pointer-events: none; /* Let clicks pass through to map if not on a button */
-        }
-
-        #list-toggle-btn, #info-btn { pointer-events: auto; }
-
-        #list-toggle-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: white; border: 3px solid #333; padding: 10px 20px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 10px; cursor: pointer; white-space: nowrap; }
-        #info-btn { position: absolute; top: calc(15px + env(safe-area-inset-top)); left: 15px; background: white; border: 3px solid #333; width: 45px; height: 45px; box-shadow: 4px 4px 0px rgba(0,0,0,0.2); font-family: 'Press Start 2P', cursive; font-size: 18px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .top-row { display: flex; justify-content: center; position: relative; width: 100%; pointer-events: none; }
+        #info-btn { position: absolute; left: 0; width: 45px; height: 45px; font-size: 18px; font-family: 'Press Start 2P', cursive; }
         #info-btn.active { background-color: var(--history); color: white; }
-        
-        #mode-indicator { position: absolute; top: calc(75px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: var(--history); color: white; padding: 5px 15px; border: 2px solid #000; font-family: 'Press Start 2P', cursive; font-size: 8px; z-index: 1090; }
+        #list-toggle-btn { padding: 10px 15px; font-family: 'Press Start 2P', cursive; font-size: 9px; white-space: nowrap; }
+        .fab { width: 65px; height: 65px; background-color: var(--accent); color: white; font-size: 35px; border: 4px solid #000; box-shadow: 6px 6px 0px #000; pointer-events: auto; }
 
-        #hangouts-panel { position: fixed; top: 0; left: 0; width: 100%; background: white; z-index: 1050; max-height: 60dvh; overflow-y: auto; border-bottom: 4px solid #333; transform: translateY(-100%); transition: transform 0.3s steps(4); padding-top: calc(70px + env(safe-area-inset-top)); }
+        /* Panel & Modals */
+        #hangouts-panel { position: fixed; top: 0; left: 0; width: 100%; background: white; z-index: 1050; max-height: 65dvh; overflow-y: auto; border-bottom: 4px solid #333; transform: translateY(-100%); transition: transform 0.3s steps(4); padding-top: calc(85px + env(safe-area-inset-top)); }
         #hangouts-panel.open { transform: translateY(0); }
-        .list-item { padding: 16px 20px; border-bottom: 2px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .list-item { padding: 15px 20px; border-bottom: 2px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
-        /* Floating Action Button - Positioned safely */
-        .fab { 
-            position: absolute; 
-            bottom: calc(40px + env(safe-area-inset-bottom, 20px)); 
-            left: 20px; 
-            width: 60px; height: 60px; 
-            background-color: var(--accent); color: white; 
-            font-size: 30px; border: 4px solid #000; 
-            box-shadow: 5px 5px 0px #000; 
-            z-index: 1000; 
-            cursor: pointer; 
-            display: flex; justify-content: center; align-items: center; 
-        }
-
-        /* Modals */
-        .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: flex-end; }
-        .modal-content { background: white; border: 4px solid #333; width: 100%; max-width: 500px; border-bottom: none; padding: 24px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); box-sizing: border-box; animation: slideUp 0.3s steps(4); max-height: 90%; overflow-y: auto; position: relative; }
+        .modal { position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: flex-end; }
+        .modal-content { background: white; border: 4px solid #333; width: 100%; max-width: 500px; border-bottom: none; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-sizing: border-box; animation: slideUp 0.3s steps(4); max-height: 92%; overflow-y: auto; position: relative; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .close { position: absolute; top: 10px; right: 15px; font-size: 30px; cursor: pointer; }
+        .close { position: absolute; top: 10px; right: 15px; font-size: 35px; cursor: pointer; }
 
-        #notif-banner { position: absolute; bottom: calc(110px + env(safe-area-inset-bottom)); left: 20px; right: 20px; background: white; border: 3px solid #000; padding: 15px; z-index: 999; box-shadow: 4px 4px 0px #000; text-align: center; }
+        input[type="text"] { padding: 10px; font-size: 20px; font-family: 'VT323', monospace; border: 3px solid #333; width: 100%; box-sizing: border-box; }
+        .primary-btn { width: 100%; background-color: var(--primary); padding: 12px; font-family: 'Press Start 2P', cursive; font-size: 10px; color: white; border: 3px solid #000; box-shadow: 4px 4px 0px #000; cursor: pointer; margin-top: 10px; }
+        .success-btn { background-color: var(--success); }
+        .danger-btn { background-color: var(--danger); }
 
-        .form-group { margin-bottom: 20px; position: relative; }
-        .form-group label { display: block; font-family: 'Press Start 2P', cursive; font-size: 10px; margin-bottom: 8px; }
-        .chips-container { display: flex; flex-wrap: wrap; gap: 8px; }
-        .chip { padding: 6px 12px; border: 2px solid #000; background: white; cursor: pointer; font-family: 'VT323', monospace; font-size: 18px; box-shadow: 3px 3px 0px #ddd; }
-        .chip.selected { background-color: var(--primary); color: white; box-shadow: 3px 3px 0px #000; }
+        .chips-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { padding: 5px 10px; border: 2px solid #000; background: white; cursor: pointer; font-size: 16px; }
+        .chip.selected { background-color: var(--primary); color: white; }
         
-        .friend-input-wrapper { display: flex; border: 3px solid #000; }
-        #friend-input { border: none; flex-grow: 1; padding: 10px; font-family: 'VT323', monospace; font-size: 20px; outline: none; }
-        #add-friend-btn { background-color: #eee; border: none; border-left: 3px solid #000; padding: 0 15px; font-family: 'VT323', monospace; font-weight: bold; cursor: pointer; }
-        #friend-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 3px solid #000; z-index: 2100; max-height: 150px; overflow-y: auto; box-shadow: 5px 5px 0px rgba(0,0,0,0.2); }
-        .suggestion-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .suggestion-item:hover { background-color: var(--primary); color: white; }
+        #friend-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 3px solid #333; z-index: 2100; max-height: 150px; overflow-y: auto; box-shadow: 5px 5px 0px rgba(0,0,0,0.2); }
+        .suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
 
-        .leaflet-div-icon { background: transparent; border: none; }
         .custom-marker { width: 32px; height: 32px; border-radius: 4px; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 3px solid black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3); font-size: 18px; text-transform: uppercase; }
         .marker-green { background-color: var(--success); }
         .marker-yellow { background-color: var(--warning); color: #000; }
         .marker-red { background-color: var(--danger); }
         .marker-history { background-color: var(--history); }
         
-        .popup-controls { margin-top: 10px; display: flex; gap: 10px; justify-content: center; border-top: 1px solid #ccc; padding-top: 8px; }
-        .edit-btn, .leave-btn, .join-btn { background: #eee; border: 2px solid #000; font-family: 'VT323', monospace; font-size: 16px; padding: 2px 8px; cursor: pointer; }
-        .edit-btn:hover { background: var(--primary); color: white; }
-        .leave-btn:hover { background: var(--danger); color: white; }
-        .join-btn { background: var(--success); color: white; }
+        .popup-controls { margin-top: 12px; display: flex; gap: 8px; justify-content: center; border-top: 1px solid #ccc; padding-top: 10px; }
+        .edit-btn, .leave-btn, .join-btn { background: #eee; border: 2px solid #000; font-family: 'VT323', monospace; font-size: 16px; padding: 5px 12px; cursor: pointer; }
+
+        /* Login screen z-index fix */
+        #login-screen { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; z-index: 3000; position: relative; background: inherit; }
     </style>
 </head>
 <body>
 
-    <!-- NOTIFICATION PROMPT -->
-    <div id="notif-banner" class="hidden">
-        <p class="pixel-font" style="font-size: 10px; margin-bottom: 10px;">ENABLE PUSH NOTIFICATIONS?</p>
-        <button id="enable-notif-btn" class="primary-btn success-btn" style="margin: 0; width: auto; font-size: 10px;">ENABLE</button>
-        <button onclick="this.parentElement.classList.add('hidden')" class="pixel-font" style="background: none; border: none; text-decoration: underline; margin-left: 10px; cursor: pointer;">LATER</button>
-    </div>
-
-    <div id="error-toast" class="hidden">
-        <p class="pixel-font" style="color: var(--danger)">ERROR:</p>
-        <p class="pixel-font" id="error-msg"></p>
-        <button class="primary-btn" onclick="this.parentElement.classList.add('hidden')">OK</button>
-    </div>
-
-    <!-- CONFIRM MODAL -->
-    <div id="confirm-modal" class="modal hidden">
-        <div class="modal-content" style="text-align: center;">
-            <h2 id="confirm-modal-title" class="pixel-font confirm-title">CONFIRM?</h2>
-            <p id="confirm-modal-text" class="pixel-font" style="font-size: 10px;">ACTION CANNOT BE UNDONE.</p>
-            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
-                <button id="confirm-yes-btn" class="primary-btn danger-btn" style="width: auto;">YES</button>
-                <button id="confirm-no-btn" class="primary-btn" style="width: auto; background: #eee; color: #000;">NO</button>
+    <!-- LOGIN -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h1 class="pixel-font" style="text-align: center;">ÖPER UME?</h1>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="text" id="username-input" placeholder="WIE HEISSISCH?">
+                <button id="login-btn" class="primary-btn">START</button>
             </div>
+            <p id="status-msg" class="pixel-font" style="text-align: center; margin-top: 15px; font-size: 8px;"></p>
+        </div>
+    </div>
+
+    <!-- MAP -->
+    <div id="map-screen" class="hidden">
+        <div id="map"></div>
+        
+        <div class="ui-safe-container">
+            <div class="top-row">
+                <button id="info-btn" class="pixel-btn">i</button>
+                <button id="list-toggle-btn" class="pixel-btn">LOCATIONS <span style="margin-left:5px;">▼</span></button>
+            </div>
+            <div class="bottom-row">
+                <button id="add-hangout-btn" class="pixel-btn fab">+</button>
+            </div>
+        </div>
+
+        <div id="mode-indicator" class="hidden">HISTORY MODE</div>
+        <div id="hangouts-panel"><div id="hangouts-list-container"></div></div>
+    </div>
+
+    <!-- SETTINGS / INFO MODAL -->
+    <div id="info-modal" class="modal hidden">
+        <div class="modal-content" style="text-align: center;">
+            <span id="close-info-modal" class="close">×</span>
+            <h2 class="pixel-font">SETTINGS</h2>
+            <div style="margin: 20px 0;">
+                <p class="pixel-font" style="font-size: 9px; margin-bottom: 10px;">RECEIVE PUSH MESSAGES?</p>
+                <button id="enable-notif-btn" class="primary-btn success-btn">ENABLE NOTIFICATIONS</button>
+                <p id="notif-status" class="pixel-font" style="font-size: 8px; margin-top: 10px; color: var(--success);"></p>
+            </div>
+            <hr style="border: 1px solid #eee; margin: 20px 0;">
+            <button id="toggle-history-btn" class="primary-btn">TOGGLE HISTORY MODE</button>
+            <button id="logout-btn" class="primary-btn danger-btn">LOGOUT</button>
+        </div>
+    </div>
+
+    <!-- HANGOUT MODAL -->
+    <div id="hangout-modal" class="modal hidden">
+        <div class="modal-content">
+            <span id="close-modal" class="close">×</span>
+            <h2 class="pixel-font" id="modal-title">NEUE ITRAG</h2>
+            <div style="margin-bottom: 15px;">
+                <label class="pixel-font" style="font-size: 8px;">WO GENAU?</label>
+                <small id="location-hint" class="hidden pixel-font" style="color: var(--success); display: block; margin: 5px 0; font-size: 8px;">📍 PIN AKTIV</small>
+                <input type="text" id="location-name" placeholder="NAME ODER PIN">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label class="pixel-font" style="font-size: 8px;">TIMER</label>
+                <div id="time-display" class="pixel-font" style="color: var(--primary); margin: 5px 0;">00:00 — 00:00</div>
+                <div id="time-slider" style="margin: 10px 10px 30px 10px;"></div>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="open-ended" style="width:18px; height:18px;"> <span class="pixel-font" style="font-size: 8px;">OPEN END</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label class="pixel-font" style="font-size: 8px;">WAS LOUFT?</label>
+                <div class="chips-container" id="intentions-container">
+                    <button class="chip" data-val="Coffee">Kaffi</button>
+                    <button class="chip" data-val="Beers">Fübi</button>
+                    <button class="chip" data-val="Games">Game</button>
+                    <button class="chip" data-val="Serious Work">Schaffe</button>
+                    <button class="chip" data-val="Drinking">Saufä</button>
+                </div>
+            </div>
+            <div style="margin-bottom: 15px; position: relative;">
+                <label class="pixel-font" style="font-size: 8px;">PARTY</label>
+                <div style="display: flex; border: 3px solid #333;">
+                    <input type="text" id="friend-input" style="border:none;" placeholder="NAME">
+                    <button id="add-friend-btn" style="background:#eee; border:none; border-left:3px solid #333; padding:0 10px;">+</button>
+                </div>
+                <div id="friend-suggestions" class="hidden"></div>
+                <div id="friends-list" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;"></div>
+            </div>
+            <button id="save-hangout-btn" class="primary-btn">BROADCAST</button>
+            <button id="edit-delete-btn" class="primary-btn danger-btn hidden">LÖSCHE</button>
         </div>
     </div>
 
@@ -166,91 +168,35 @@
     <div id="join-modal" class="modal hidden">
         <div class="modal-content" style="text-align: center;">
             <h2 class="pixel-font" style="color: var(--success);">JOIN HANGOUT</h2>
-            <div class="form-group">
-                <label>STAY DURATION</label>
+            <div style="margin-bottom: 20px;">
                 <div class="join-time-display pixel-font" style="color: var(--primary); margin-bottom: 10px;">00:00 — 00:00</div>
-                <div id="join-time-slider" class="slider-container"></div>
-                <div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-                    <input type="checkbox" id="join-open-ended" checked>
-                    <label for="join-open-ended" style="margin-bottom: 0;">OPEN END</label>
-                </div>
+                <div id="join-time-slider" style="margin: 0 10px 35px 10px;"></div>
+                <label style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+                    <input type="checkbox" id="join-open-ended" checked> <span class="pixel-font" style="font-size: 8px;">OPEN END</span>
+                </label>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="join-confirm-btn" class="primary-btn success-btn">CONFIRM</button>
-                <button id="join-cancel-btn" class="primary-btn" style="background: #eee; color: #000;">CANCEL</button>
+            <button id="join-confirm-btn" class="primary-btn success-btn">DEBI SI</button>
+            <button id="join-cancel-btn" class="primary-btn" style="background:#eee; color:#000;">ABBRECHE</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content" style="text-align: center; align-items: center;">
+            <h2 id="confirm-modal-title" class="pixel-font" style="color: var(--danger);">GOPPS?</h2>
+            <p id="confirm-modal-text" class="pixel-font" style="font-size: 8px; margin-bottom: 15px;">BISCH SICHER?</p>
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button id="confirm-yes-btn" class="primary-btn danger-btn">JA</button>
+                <button id="confirm-no-btn" class="primary-btn" style="background:#eee; color:#000;">NEI</button>
             </div>
         </div>
     </div>
 
-    <div id="login-screen">
-        <div class="login-card">
-            <h1 class="pixel-font">ÖPER UME?</h1>
-            <div class="input-group">
-                <input type="text" id="username-input" placeholder="YOUR NAME?">
-                <button id="login-btn">ENTER GAME</button>
-            </div>
-            <p id="status-msg" class="pixel-font"></p>
-        </div>
+    <div id="error-toast" class="hidden">
+        <p class="pixel-font" id="error-msg" style="font-size: 8px;"></p>
+        <button class="primary-btn" onclick="this.parentElement.classList.add('hidden')">OK</button>
     </div>
 
-    <div id="map-screen" class="hidden">
-        <div id="map"></div>
-        
-        <div class="top-ui-layer">
-            <button id="info-btn">i</button>
-            <button id="list-toggle-btn">LOCATIONS <span class="arrow">▼</span></button>
-        </div>
-
-        <div id="mode-indicator" class="hidden">HISTORY MODE ACTIVE</div>
-        
-        <div id="hangouts-panel"><div id="hangouts-list-container"></div></div>
-        
-        <button id="add-hangout-btn" class="fab">+</button>
-    </div>
-
-    <div id="hangout-modal" class="modal hidden">
-        <div class="modal-content">
-            <span id="close-modal" class="close">×</span>
-            <h2 id="modal-title" class="pixel-font">NEW ENTRY</h2>
-            <div class="form-group">
-                <label>WHERE?</label>
-                <small id="location-hint" class="hint-text hidden pixel-font" style="color: var(--success); margin-bottom: 5px; display: block;">MAP PIN ACTIVE</small> 
-                <input type="text" id="location-name" placeholder="SEARCH OR NAME PIN">
-            </div>
-            <div class="form-group">
-                <label>TIMER</label>
-                <div id="time-display" class="pixel-font" style="color: var(--primary);">00:00 — 00:00</div>
-                <div id="time-slider" class="slider-container"></div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="open-ended">
-                    <label for="open-ended" style="margin-bottom: 0;">NO END TIME</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>MOOD</label>
-                <div class="chips-container" id="intentions-container">
-                    <button class="chip" data-val="Coffee">Kaffi-Schwatz</button>
-                    <button class="chip" data-val="Beers">Fübber</button>
-                    <button class="chip" data-val="Reading">Zäme lese</button>
-                    <button class="chip" data-val="Games">Game</button>
-                    <button class="chip" data-val="Fun Work">"Schaffe"</button>
-                    <button class="chip" data-val="Serious Work">Schaffe</button>
-                    <button class="chip" data-val="Drinking">Festplatte lösche</button>
-                    <button class="chip" data-val="Bar Game">Bar Hunt</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>PARTY</label>
-                <div class="friend-input-wrapper"><input type="text" id="friend-input" placeholder="ADD NAME"><button id="add-friend-btn">ADD</button></div>
-                <div id="friend-suggestions" class="hidden"></div>
-                <div id="friends-list" class="friends-tags" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;"></div>
-            </div>
-            <button id="save-hangout-btn" class="primary-btn">BROADCAST</button>
-            <button id="edit-delete-btn" class="primary-btn danger-btn hidden">DELETE ENTRY</button>
-        </div>
-    </div>
-
-    <!-- Firebase SDKs -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -269,7 +215,8 @@
             measurementId: "G-S8P7E02CWL"
         };
 
-        const VAPID_KEY = "Byxz9-OQWwwRPyF6XD8P7Pg5fmmOZCA6QyUQwT_ibMM"; 
+        // --- REPLACE WITH YOUR ACTUAL VAPID KEY ---
+        const VAPID_KEY = "YOUR_ACTUAL_VAPID_KEY_HERE"; 
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -278,6 +225,7 @@
         const UI = {
             loginScreen: document.getElementById('login-screen'),
             mapScreen: document.getElementById('map-screen'),
+            infoModal: document.getElementById('info-modal'),
             usernameInput: document.getElementById('username-input'),
             loginBtn: document.getElementById('login-btn'),
             statusMsg: document.getElementById('status-msg'),
@@ -315,8 +263,11 @@
             joinOpenEnded: document.getElementById('join-open-ended'),
             joinConfirmBtn: document.getElementById('join-confirm-btn'),
             joinCancelBtn: document.getElementById('join-cancel-btn'),
-            notifBanner: document.getElementById('notif-banner'),
-            enableNotifBtn: document.getElementById('enable-notif-btn')
+            enableNotifBtn: document.getElementById('enable-notif-btn'),
+            notifStatus: document.getElementById('notif-status'),
+            logoutBtn: document.getElementById('logout-btn'),
+            toggleHistoryBtn: document.getElementById('toggle-history-btn'),
+            closeInfoModal: document.getElementById('close-info-modal')
         };
 
         let currentUser = null;
@@ -334,42 +285,49 @@
         let pendingAction = null; 
         let pendingJoinId = null;
 
-        // --- NOTIFICATION BROADCAST LOGIC ---
-        function triggerNotification(title, body) {
-            console.log("Triggering notification:", title, body);
-            // We write to a queue that a Cloud Function would normally pick up
-            db.ref('notification_queue').push({
-                title: title,
-                body: body,
-                timestamp: Date.now(),
-                sender: currentUser.display
-            });
-        }
-
+        // --- NOTIFICATIONS ---
         async function setupNotifications() {
             if (!messaging) return;
+            UI.enableNotifBtn.innerText = "REQUESTING...";
             try {
-                const token = await messaging.getToken({ vapidKey: VAPID_KEY });
-                if (token) {
-                    await db.ref(`users/${currentUser.name}/fcmToken`).set(token);
-                    UI.notifBanner.classList.add('hidden');
+                // This triggers the browser prompt
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                    if (token) {
+                        await db.ref(`users/${currentUser.name}/fcmToken`).set(token);
+                        UI.notifStatus.innerText = "NOTIFICATIONS ACTIVE! ✓";
+                        UI.enableNotifBtn.classList.add('hidden');
+                    }
+                } else {
+                    UI.notifStatus.innerText = "PERMISSION DENIED ✗";
                 }
-            } catch (err) { console.error("Notif setup failed:", err); }
+            } catch (err) {
+                console.error(err);
+                UI.notifStatus.innerText = "ERROR IN SETUP ✗";
+            } finally {
+                UI.enableNotifBtn.innerText = "ENABLE NOTIFICATIONS";
+            }
         }
 
         UI.enableNotifBtn.addEventListener('click', setupNotifications);
 
+        function triggerNotification(title, body) {
+            db.ref('notification_queue').push({ title, body, timestamp: Date.now(), sender: currentUser.display });
+        }
+
+        // --- APP FLOW ---
         window.addEventListener('load', () => {
             const saved = localStorage.getItem('hangout_user');
             if (saved) { currentUser = JSON.parse(saved); enterApp(); }
-            if ('serviceWorker' in navigator) { navigator.serviceWorker.register('firebase-messaging-sw.js'); }
+            if ('serviceWorker' in navigator) navigator.serviceWorker.register('firebase-messaging-sw.js');
         });
 
         UI.loginBtn.addEventListener('click', async () => {
             const nameInput = UI.usernameInput.value.trim();
             if (!nameInput) return;
             const nameId = nameInput.toLowerCase().replace(/\s+/g, '_');
-            UI.statusMsg.innerText = "CONNECTING...";
+            UI.statusMsg.innerText = "SICH ALÖGGE...";
             try {
                 const snapshot = await db.ref('users/' + nameId).once('value');
                 const userData = snapshot.val();
@@ -377,117 +335,91 @@
                     const newUser = { name: nameId, display: nameInput };
                     await db.ref('users/' + nameId).set(newUser);
                     currentUser = newUser;
-                } else { currentUser = userData; }
+                } else currentUser = userData;
                 localStorage.setItem('hangout_user', JSON.stringify(currentUser));
                 enterApp();
-            } catch (err) { UI.statusMsg.innerText = "ERROR!"; }
+            } catch (err) { UI.statusMsg.innerText = "FEHLER!"; }
         });
 
         function enterApp() {
             UI.loginScreen.classList.add('hidden');
             UI.mapScreen.classList.remove('hidden');
             if (!map) initMap();
+            // Check if we already have a token
             db.ref(`users/${currentUser.name}/fcmToken`).once('value', snap => {
-                if (!snap.exists() && messaging) UI.notifBanner.classList.remove('hidden');
+                if (snap.exists()) UI.enableNotifBtn.classList.add('hidden');
             });
         }
 
         function initMap() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([47.3769, 8.5417], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            setTimeout(() => map.invalidateSize(), 200);
+            setTimeout(() => map.invalidateSize(), 500);
             map.on('click', e => { if (!isHistoryMode) { clickedCoords = e.latlng; openModal(true); } });
             listenForHangouts();
             listenForUsers();
-            setInterval(() => {
-                const now = new Date();
-                if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() < 10) renderMarkersAndList();
-            }, 5000);
         }
 
-        UI.infoBtn.addEventListener('click', () => {
-            isHistoryMode = !isHistoryMode;
-            UI.infoBtn.classList.toggle('active', isHistoryMode);
-            UI.modeIndicator.classList.toggle('hidden', !isHistoryMode);
-            renderMarkersAndList();
+        // INFO / SETTINGS MODAL
+        UI.infoBtn.addEventListener('click', () => UI.infoModal.classList.remove('hidden'));
+        UI.closeInfoModal.addEventListener('click', () => UI.infoModal.classList.add('hidden'));
+        UI.toggleHistoryBtn.addEventListener('click', () => { 
+            isHistoryMode = !isHistoryMode; 
+            UI.infoBtn.classList.toggle('active', isHistoryMode); 
+            UI.modeIndicator.classList.toggle('hidden', !isHistoryMode); 
+            renderMarkersAndList(); 
+            UI.infoModal.classList.add('hidden');
         });
+        UI.logoutBtn.addEventListener('click', () => { localStorage.removeItem('hangout_user'); location.reload(); });
 
-        UI.listToggleBtn.addEventListener('click', () => {
-            UI.hangoutsPanel.classList.toggle('open');
-            UI.listToggleBtn.classList.toggle('active');
-        });
+        UI.listToggleBtn.addEventListener('click', () => { UI.hangoutsPanel.classList.toggle('open'); UI.listToggleBtn.classList.toggle('active'); });
 
         function renderMarkersAndList() {
             Object.values(markers).forEach(m => map.removeLayer(m));
             markers = {};
             const keys = Object.keys(allHangouts);
-            let displayList = [];
-            const todayTimestamp = new Date().setHours(0,0,0,0);
-
+            let list = [];
+            const today = new Date().setHours(0,0,0,0);
             if (isHistoryMode) {
-                displayList = keys.map(k => ({ id: k, ...allHangouts[k] }))
-                    .filter(item => {
-                        const userInJoiners = item.joiners && Object.values(item.joiners).some(j => j.name === currentUser.name);
-                        return item.host_id === currentUser.name || (item.friends && item.friends.includes(currentUser.display)) || userInJoiners;
-                    }).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                list = keys.map(k => ({ id: k, ...allHangouts[k] }))
+                    .filter(i => i.host_id === currentUser.name || (i.joiners && i.joiners[currentUser.name]))
+                    .sort((a,b) => b.timestamp - a.timestamp);
             } else {
-                displayList = keys.map(k => ({ id: k, ...allHangouts[k] }))
-                    .filter(item => (item.timestamp || 0) >= todayTimestamp)
-                    .sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+                list = keys.map(k => ({ id: k, ...allHangouts[k] }))
+                    .filter(i => i.timestamp >= today).sort((a,b) => b.timestamp - a.timestamp);
             }
-
-            displayList.forEach(item => createMarker(item.id, item));
-            if (displayList.length === 0) {
-                UI.listContainer.innerHTML = `<div class="empty-list-msg pixel-font">Nothing found...</div>`;
-            } else {
-                UI.listContainer.innerHTML = displayList.map(item => {
-                    let color = 'marker-green';
-                    if (!isHistoryMode) {
-                        const s = getStatus(item.start_time, item.end_time);
-                        if (s === 'yellow') color = 'marker-yellow';
-                        if (s === 'red') color = 'marker-red';
-                    } else color = 'marker-history';
-                    const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString() : 'Today';
-                    const joinersList = item.joiners ? Object.values(item.joiners).map(j => j.display).join(', ') : '';
-                    return `<div class="list-item" onclick="jumpToHangout('${item.id}')">
-                        <div class="info"><span class="host">${item.host}</span><span class="loc">${item.location_name}</span><span class="date">${dateStr} | ${item.start_time} — ${item.end_time}</span>${joinersList ? `<span class="joiners-text">Joined: ${joinersList}</span>` : ''}</div>
-                        <div class="custom-marker ${color}" style="width:12px; height:12px; min-width:12px; min-height:12px; box-shadow:none;"></div>
-                    </div>`;
-                }).join('');
-            }
+            list.forEach(i => createMarker(i.id, i));
+            UI.listContainer.innerHTML = list.length ? list.map(i => {
+                const s = getStatus(i.start_time, i.end_time);
+                const c = isHistoryMode ? 'marker-history' : (s==='yellow'?'marker-yellow':(s==='red'?'marker-red':'marker-green'));
+                return `<div class="list-item" onclick="jumpToHangout('${i.id}')"><div class="info"><span class="host">${i.host}</span><span class="loc">${i.location_name}</span><span class="date">${i.start_time}—${i.end_time}</span></div><div class="custom-marker ${c}" style="width:12px; height:12px; min-width:12px; box-shadow:none;"></div></div>`;
+            }).join('') : '<div class="empty-list-msg pixel-font">Niemert ume...</div>';
         }
 
         window.jumpToHangout = id => {
             const h = allHangouts[id];
-            if (h && h.coordinates) {
-                UI.hangoutsPanel.classList.remove('open');
-                UI.listToggleBtn.classList.remove('active');
-                map.flyTo([h.coordinates.lat, h.coordinates.lng], 16, { duration: 1.5 });
-                if (markers[id]) markers[id].openPopup();
-            }
+            if (h) { UI.hangoutsPanel.classList.remove('open'); map.flyTo([h.coordinates.lat, h.coordinates.lng], 16, { duration: 1 }); if (markers[id]) markers[id].openPopup(); }
         };
 
-        function openModal(isMapClick = false, prefillData = null) {
-            UI.modal.classList.remove('hidden');
-            initSlider();
-            if (prefillData) {
-                editingId = prefillData.id; UI.modalTitle.innerText = "EDIT ENTRY"; UI.saveBtn.innerText = "UPDATE"; UI.editDeleteBtn.classList.remove('hidden');
-                UI.locationInput.value = prefillData.location_name; selectedIntentions = [...(prefillData.intentions || [])]; selectedFriends = [...(prefillData.friends || [])];
-                UI.openEnded.checked = prefillData.end_time === "Open";
-                const [sh, sm] = prefillData.start_time.split(':').map(Number);
-                let endMins = 1440; if (prefillData.end_time !== "Open") { const [eh, em] = prefillData.end_time.split(':').map(Number); endMins = eh * 60 + em; }
-                timeSliderInstance.set([sh * 60 + sm, endMins]);
-                clickedCoords = prefillData.coordinates; UI.locationHint.classList.remove('hidden'); UI.locationHint.innerText = "Coordinates Saved";
+        function openModal(isMapClick = false, data = null) {
+            UI.modal.classList.remove('hidden'); initSlider();
+            if (data) {
+                editingId = data.id; UI.modalTitle.innerText = "EDIT"; UI.saveBtn.innerText = "UPDATE"; UI.editDeleteBtn.classList.remove('hidden');
+                UI.locationInput.value = data.location_name; selectedIntentions = [...(data.intentions || [])]; selectedFriends = [...(data.friends || [])];
+                UI.openEnded.checked = data.end_time === "Open";
+                const [sh, sm] = data.start_time.split(':').map(Number);
+                let eh=23, em=59; if (data.end_time !== "Open") [eh, em] = data.end_time.split(':').map(Number);
+                timeSliderInstance.set([sh*60+sm, eh*60+em]);
+                clickedCoords = data.coordinates; UI.locationHint.classList.remove('hidden');
             } else {
-                editingId = null; UI.modalTitle.innerText = "NEW ENTRY"; UI.saveBtn.innerText = "BROADCAST"; UI.editDeleteBtn.classList.add('hidden');
+                editingId = null; UI.modalTitle.innerText = "NEUE ITRAG"; UI.saveBtn.innerText = "SÄNDE"; UI.editDeleteBtn.classList.add('hidden');
                 UI.locationInput.value = ""; selectedIntentions = []; selectedFriends = []; UI.openEnded.checked = false;
-                if (isMapClick) { UI.locationHint.classList.remove('hidden'); UI.locationHint.innerText = "Using pinned location"; } else { clickedCoords = null; UI.locationHint.classList.add('hidden'); }
+                if (isMapClick) { UI.locationHint.classList.remove('hidden'); } else { clickedCoords = null; UI.locationHint.classList.add('hidden'); }
             }
             UI.intentions.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', selectedIntentions.includes(c.dataset.val)));
             renderFriends(); UI.saveBtn.disabled = false; UI.locationInput.focus();
         }
 
-        UI.addHangoutBtn.addEventListener('click', () => { if (isHistoryMode) { isHistoryMode = false; UI.infoBtn.classList.remove('active'); UI.modeIndicator.classList.add('hidden'); renderMarkersAndList(); } openModal(false); });
         UI.closeModal.addEventListener('click', () => UI.modal.classList.add('hidden'));
 
         UI.intentions.addEventListener('click', e => { if (e.target.classList.contains('chip')) { const v = e.target.dataset.val; e.target.classList.toggle('selected'); if (selectedIntentions.includes(v)) selectedIntentions = selectedIntentions.filter(i => i !== v); else selectedIntentions.push(v); } });
@@ -495,61 +427,50 @@
         UI.friendInput.addEventListener('input', e => {
             const v = e.target.value.toLowerCase().trim();
             if (!v) { UI.friendSuggestions.classList.add('hidden'); return; }
-            const filtered = registeredUsers.filter(u => u.display.toLowerCase().includes(v) && u.display !== currentUser.display && !selectedFriends.includes(u.display));
-            if (filtered.length > 0) {
-                UI.friendSuggestions.innerHTML = filtered.map(u => `<div class="suggestion-item" onclick="selectFriendSuggestion('${u.display}')">${u.display}</div>`).join('');
-                UI.friendSuggestions.classList.remove('hidden');
-            } else UI.friendSuggestions.classList.add('hidden');
+            const fil = registeredUsers.filter(u => u.display.toLowerCase().includes(v) && u.display !== currentUser.display && !selectedFriends.includes(u.display));
+            if (fil.length) { UI.friendSuggestions.innerHTML = fil.map(u => `<div class="suggestion-item pixel-font" onclick="selectSuggestion('${u.display}')">${u.display}</div>`).join(''); UI.friendSuggestions.classList.remove('hidden'); }
+            else UI.friendSuggestions.classList.add('hidden');
         });
 
-        window.selectFriendSuggestion = n => { UI.friendInput.value = n; UI.friendSuggestions.classList.add('hidden'); UI.addFriendBtn.click(); };
-        UI.addFriendBtn.addEventListener('click', () => { const n = UI.friendInput.value.trim(); if (n && !selectedFriends.includes(n)) { selectedFriends.push(n); renderFriends(); UI.friendInput.value = ""; UI.friendSuggestions.classList.add('hidden'); } });
+        window.selectSuggestion = n => { UI.friendInput.value = n; UI.friendSuggestions.classList.add('hidden'); UI.addFriendBtn.click(); };
+        UI.addFriendBtn.addEventListener('click', () => { const n = UI.friendInput.value.trim(); if (n) { selectedFriends.push(n); renderFriends(); UI.friendInput.value = ""; UI.friendSuggestions.classList.add('hidden'); } });
         function renderFriends() { UI.friendsList.innerHTML = selectedFriends.map(f => `<div class="chip selected" style="font-size:14px; margin-right:5px;">${f} <span onclick="removeFriend('${f}')" style="margin-left:5px; color:red;">×</span></div>`).join(''); }
         window.removeFriend = n => { selectedFriends = selectedFriends.filter(f => f !== n); renderFriends(); };
 
         function initSlider() {
             if (timeSliderInstance) timeSliderInstance.destroy();
-            const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes();
-            noUiSlider.create(UI.slider, { start: [cur, Math.min(1439, cur + 120)], connect: true, range: { 'min': 0, 'max': 1440 }, step: 15, margin: 30 });
+            const cur = new Date().getHours() * 60 + new Date().getMinutes();
+            noUiSlider.create(UI.slider, { start: [cur, Math.min(1439, cur+120)], connect: true, range: { 'min': 0, 'max': 1440 }, step: 15, margin: 30 });
             timeSliderInstance = UI.slider.noUiSlider;
-            timeSliderInstance.on('update', v => { UI.timeDisplay.innerText = `${minutesToTime(v[0])} — ${UI.openEnded.checked ? "OPEN" : minutesToTime(v[1])}`; });
+            timeSliderInstance.on('update', v => UI.timeDisplay.innerText = `${minutesToTime(v[0])} — ${UI.openEnded.checked ? "OPEN" : minutesToTime(v[1])}`);
         }
 
         UI.openEnded.addEventListener('change', e => {
             if (e.target.checked) { timeSliderInstance.set([null, 1440]); UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'none'; }
-            else { UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'block'; const s = parseFloat(timeSliderInstance.get()[0]); timeSliderInstance.set([null, Math.min(1440, s + 120)]); }
-            timeSliderInstance.set(timeSliderInstance.get());
+            else { UI.slider.querySelectorAll('.noUi-handle')[1].style.display = 'block'; timeSliderInstance.set(timeSliderInstance.get()); }
         });
 
-        function minutesToTime(mins) { let h = Math.floor(mins / 60) % 24; let m = Math.floor(mins % 60); return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; }
+        function minutesToTime(m) { let h = Math.floor(m/60)%24; return `${h.toString().padStart(2,'0')}:${Math.floor(m%60).toString().padStart(2,'0')}`; }
+        function listenForUsers() { db.ref('users').on('value', s => { registeredUsers = []; s.forEach(d => registeredUsers.push(d.val())); }); }
 
-        function listenForUsers() { db.ref('users').on('value', snap => { registeredUsers = []; snap.forEach(doc => registeredUsers.push(doc.val())); }); }
-
-        window.promptLeave = (id, isHost) => {
-            pendingAction = { type: 'leave', id, isHost };
-            UI.confirmModalTitle.innerText = "LEAVE NOW?"; UI.confirmModalText.innerText = "YOUR STAY WILL END IMMEDIATELY."; UI.confirmModal.classList.remove('hidden');
-        };
-
-        UI.editDeleteBtn.addEventListener('click', () => { pendingAction = { type: 'delete', id: editingId }; UI.confirmModalTitle.innerText = "DELETE ENTRY?"; UI.confirmModalText.innerText = "REMOVING FROM MAP COMPLETELY."; UI.confirmModal.classList.remove('hidden'); });
+        window.promptLeave = (id, host) => { pendingAction = { type:'leave', id, host }; UI.confirmModalTitle.innerText = "GOHSCH?"; UI.confirmModal.classList.remove('hidden'); };
+        UI.editDeleteBtn.addEventListener('click', () => { pendingAction = { type:'delete', id: editingId }; UI.confirmModalTitle.innerText = "LÖSCHE?"; UI.confirmModal.classList.remove('hidden'); });
 
         UI.confirmYesBtn.addEventListener('click', async () => {
             if (pendingAction) {
-                if (pendingAction.type === 'delete') { await db.ref('hangouts/' + pendingAction.id).remove(); UI.modal.classList.add('hidden'); }
-                else if (pendingAction.type === 'leave') {
-                    const nowStr = minutesToTime(new Date().getHours() * 60 + new Date().getMinutes());
+                const nowStr = minutesToTime(new Date().getHours()*60 + new Date().getMinutes());
+                if (pendingAction.type === 'delete') { await db.ref('hangouts/'+pendingAction.id).remove(); UI.modal.classList.add('hidden'); }
+                else {
                     const h = allHangouts[pendingAction.id];
-                    if (pendingAction.isHost) {
+                    if (pendingAction.host) {
                         const joiners = h.joiners ? Object.values(h.joiners) : [];
-                        const activeJ = joiners.filter(j => { if (j.end_time === "Open") return true; const [eh, em] = j.end_time.split(':').map(Number); return (eh * 60 + em) > (new Date().getHours() * 60 + new Date().getMinutes()); });
-                        if (activeJ.length > 0) {
-                            const newH = activeJ[0]; await db.ref(`hangouts/${pendingAction.id}/joiners/${newH.name}`).remove();
-                            await db.ref(`hangouts/${pendingAction.id}`).update({ host: newH.display, host_id: newH.name, start_time: newH.start_time, end_time: newH.end_time });
+                        const active = joiners.filter(j => j.end_time === "Open" || (parseInt(j.end_time.split(':')[0])*60 + parseInt(j.end_time.split(':')[1])) > (new Date().getHours()*60 + new Date().getMinutes()));
+                        if (active.length) {
+                            const nH = active[0]; await db.ref(`hangouts/${pendingAction.id}/joiners/${nH.name}`).remove();
+                            await db.ref(`hangouts/${pendingAction.id}`).update({ host: nH.display, host_id: nH.name, start_time: nH.start_time, end_time: nH.end_time });
                         } else await db.ref(`hangouts/${pendingAction.id}`).update({ end_time: nowStr });
-                        triggerNotification("Friend Left", `${currentUser.display} has left ${h.location_name}.`);
-                    } else {
-                        await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
-                        triggerNotification("Friend Left", `${currentUser.display} finished joining at ${h.location_name}.`);
-                    }
+                    } else await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
+                    triggerNotification("Abgfahre!", `${currentUser.display} isch nüm det.`);
                 }
             }
             UI.confirmModal.classList.add('hidden'); pendingAction = null;
@@ -563,78 +484,59 @@
             const cur = new Date().getHours() * 60 + new Date().getMinutes();
             noUiSlider.create(UI.joinSlider, { start: [cur, 1440], connect: true, range: { 'min': 0, 'max': 1440 }, step: 15, margin: 30 });
             joinSliderInstance = UI.joinSlider.noUiSlider;
-            joinSliderInstance.on('update', v => { UI.joinTimeDisplay.innerText = `${minutesToTime(v[0])} — ${UI.joinOpenEnded.checked ? "OPEN" : minutesToTime(v[1])}`; });
+            joinSliderInstance.on('update', v => UI.joinTimeDisplay.innerText = `${minutesToTime(v[0])} — ${UI.joinOpenEnded.checked ? "OPEN" : minutesToTime(v[1])}`);
             UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'none';
         }
-        UI.joinOpenEnded.addEventListener('change', e => { if (e.target.checked) { joinSliderInstance.set([null, 1440]); UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'none'; } else { UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = 'block'; joinSliderInstance.set(joinSliderInstance.get()); } });
+        UI.joinOpenEnded.addEventListener('change', e => { UI.joinSlider.querySelectorAll('.noUi-handle')[1].style.display = e.target.checked ? 'none' : 'block'; if (e.target.checked) joinSliderInstance.set([null, 1440]); });
 
         UI.joinConfirmBtn.addEventListener('click', async () => {
-            if (pendingJoinId) {
-                const v = joinSliderInstance.get();
-                const h = allHangouts[pendingJoinId];
-                const joinTime = minutesToTime(v[0]);
-                await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({ name: currentUser.name, display: currentUser.display, start_time: joinTime, end_time: UI.joinOpenEnded.checked ? "Open" : minutesToTime(v[1]) });
-                triggerNotification("Friend Joined!", `${currentUser.display} joined ${h.host} at ${h.location_name} (starts ${joinTime}).`);
-                UI.joinModal.classList.add('hidden'); pendingJoinId = null;
-            }
+            const v = joinSliderInstance.get(); const h = allHangouts[pendingJoinId];
+            await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({ name: currentUser.name, display: currentUser.display, start_time: minutesToTime(v[0]), end_time: UI.joinOpenEnded.checked ? "Open" : minutesToTime(v[1]) });
+            triggerNotification("Zuwachs!", `${currentUser.display} isch jetzt au det.`);
+            UI.joinModal.classList.add('hidden');
         });
-        UI.joinCancelBtn.addEventListener('click', () => { UI.joinModal.classList.add('hidden'); pendingJoinId = null; });
+        UI.joinCancelBtn.addEventListener('click', () => UI.joinModal.classList.add('hidden'));
 
         UI.saveBtn.addEventListener('click', async () => {
             const loc = UI.locationInput.value.trim(); if (!loc) return;
-            UI.saveBtn.innerText = "WAIT..."; UI.saveBtn.disabled = true;
+            UI.saveBtn.innerText = "..."; UI.saveBtn.disabled = true;
             let coords = clickedCoords;
             if (!coords) {
                 try {
                     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc + ', Zurich')}`);
                     const d = await r.json();
-                    if (d.length > 0) coords = { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
-                    else { UI.errorMsg.innerText = "BAR NOT FOUND. CLICK MAP."; UI.errorToast.classList.remove('hidden'); UI.saveBtn.disabled = false; UI.saveBtn.innerText = editingId ? "UPDATE" : "BROADCAST"; return; }
+                    if (d.length) coords = { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
+                    else { UI.errorMsg.innerText = "BAR NÖD GFUNGE. CLICK UF MAP."; UI.errorToast.classList.remove('hidden'); UI.saveBtn.disabled = false; return; }
                 } catch (e) { UI.saveBtn.disabled = false; return; }
             }
-            const v = timeSliderInstance.get();
-            const startT = minutesToTime(v[0]);
-            const endT = UI.openEnded.checked ? "Open" : minutesToTime(v[1]);
-            const h = { host: currentUser.display, host_id: currentUser.name, location_name: loc, coordinates: { lat: coords.lat, lng: coords.lng }, start_time: startT, end_time: endT, intentions: selectedIntentions, friends: selectedFriends, timestamp: editingId ? (allHangouts[editingId].timestamp || Date.now()) : Date.now() };
-            
-            if (editingId) await db.ref('hangouts/' + editingId).update(h);
-            else {
-                await db.ref('hangouts').push(h);
-                const s = getStatus(startT, endT);
-                const msg = s === 'yellow' ? `${currentUser.display} plans to be at ${loc} (${startT}—${endT}).` : `${currentUser.display} is at ${loc} until ${endT}.`;
-                triggerNotification("New Hangout!", msg);
-            }
-            UI.modal.classList.add('hidden'); map.flyTo([h.coordinates.lat, h.coordinates.lng], 16, { duration: 1.5 });
+            const v = timeSliderInstance.get(); const st = minutesToTime(v[0]), et = UI.openEnded.checked ? "Open" : minutesToTime(v[1]);
+            const h = { host: currentUser.display, host_id: currentUser.name, location_name: loc, coordinates: { lat: coords.lat, lng: coords.lng }, start_time: st, end_time: et, intentions: selectedIntentions, friends: selectedFriends, timestamp: editingId ? allHangouts[editingId].timestamp : Date.now() };
+            if (editingId) await db.ref('hangouts/'+editingId).update(h);
+            else { await db.ref('hangouts').push(h); triggerNotification("Öper ume?", `${currentUser.display} isch im ${loc}.`); }
+            UI.modal.classList.add('hidden'); map.flyTo([coords.lat, coords.lng], 16);
         });
 
         function listenForHangouts() { db.ref('hangouts').on('value', snap => { allHangouts = snap.val() || {}; renderMarkersAndList(); }); }
-
-        function createMarker(id, data) {
-            let s = isHistoryMode ? 'history' : getStatus(data.start_time, data.end_time);
-            const icon = L.divIcon({ className: 'leaflet-div-icon', html: `<div class="custom-marker marker-${s}">${data.host.charAt(0)}</div>`, iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -20] });
-            const party = [data.host, ...(data.friends || [])].join(', ');
-            const joiners = data.joiners ? Object.values(data.joiners) : [];
-            const jHtml = joiners.map(j => `<li>${j.display} (${j.start_time}-${j.end_time})</li>`).join('');
-            const isOwner = (data.host_id === currentUser.name) && !isHistoryMode;
-            const activeJoiner = data.joiners && data.joiners[currentUser.name] && getStatus(data.joiners[currentUser.name].start_time, data.joiners[currentUser.name].end_time) !== 'red';
-            let txt = isHistoryMode ? new Date(data.timestamp).toLocaleDateString() : (s === 'yellow' ? data.host.toUpperCase() + ' WILL BE HERE' : (s === 'red' ? data.host.toUpperCase() + ' WAS HERE' : data.host.toUpperCase() + ' IS HERE'));
-            
-            const popup = `<div style="text-align: center; font-family:'VT323'; font-size:18px; max-width: 200px;">
-                <strong style="font-family:'Press Start 2P'; font-size:10px;">${data.location_name}</strong><br><span>${txt}</span><br><small>${data.start_time} - ${data.end_time}</small>
-                <div style="margin-top:5px; border-top:1px solid #ccc; padding-top:5px;"><span style="font-size:14px; display:block;">PARTY:</span><span style="font-size:16px;">${party}</span>${jHtml ? `<span style="font-size:14px; display:block; margin-top:5px; color:var(--success);">JOINED:</span><ul style="list-style:none; padding:0; margin:0; font-size:14px; color:var(--success);">${jHtml}</ul>` : ''}</div>
-                <div class="popup-controls">${isOwner ? `<button class="edit-btn" onclick="editEntry('${id}')">EDIT</button><button class="leave-btn" onclick="promptLeave('${id}', true)">LEAVE</button>` : `${activeJoiner ? `<button class="leave-btn" onclick="promptLeave('${id}', false)">LEAVE</button>` : `${!isHistoryMode ? `<button class="join-btn" onclick="joinEntry('${id}')">JOIN</button>` : ''}`} `}</div>
-            </div>`;
-            markers[id] = L.marker([data.coordinates.lat, data.coordinates.lng], { icon }).addTo(map).bindPopup(popup);
+        function createMarker(id, d) {
+            let s = isHistoryMode ? 'history' : getStatus(d.start_time, d.end_time);
+            const icon = L.divIcon({ className:'leaflet-div-icon', html:`<div class="custom-marker marker-${s}">${d.host.charAt(0)}</div>`, iconSize:[32,32], iconAnchor:[16,16], popupAnchor:[0,-20] });
+            const jList = d.joiners ? Object.values(d.joiners).map(j => `<li>${j.display} (${j.start_time}-${j.end_time})</li>`).join('') : '';
+            const isOwner = d.host_id === currentUser.name; const isJ = d.joiners && d.joiners[currentUser.name] && getStatus(d.joiners[currentUser.name].start_time, d.joiners[currentUser.name].end_time) !== 'red';
+            let txt = isHistoryMode ? new Date(d.timestamp).toLocaleDateString() : (s==='yellow'?d.host.toUpperCase()+' CHUNT DÄN':(s==='red'?d.host.toUpperCase()+' ISCH DET GSI':d.host.toUpperCase()+' ISCH DET'));
+            const pop = `<div style="text-align: center; font-family:'VT323'; font-size:18px; min-width: 180px;"><strong style="font-family:'Press Start 2P'; font-size:9px;">${d.location_name}</strong><br>${txt}<br><small>${d.start_time}-${d.end_time}</small><div style="margin-top:5px; border-top:1px solid #ccc; padding-top:5px;"><span style="font-size:14px; display:block;">PARTY:</span><span style="font-size:16px;">${[d.host, ...(d.friends||[])].join(', ')}</span>${jList?`<ul style="list-style:none; padding:0; font-size:14px; color:var(--success);">${jList}</ul>`:''}</div><div class="popup-controls">${isOwner?`<button class="edit-btn" onclick="window.editEntry('${id}')">EDIT</button><button class="leave-btn" onclick="promptLeave('${id}',true)">LEAVE</button>`:(isJ?`<button class="leave-btn" onclick="promptLeave('${id}',false)">LEAVE</button>`:`<button class="join-btn" onclick="joinEntry('${id}')">JOIN</button>`)}</div></div>`;
+            markers[id] = L.marker([d.coordinates.lat, d.coordinates.lng], { icon }).addTo(map).bindPopup(pop);
         }
 
         function getStatus(s, e) {
-            const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes();
-            const [sh, sm] = (s || "00:00").split(':').map(Number);
-            if (cur < (sh * 60 + sm)) return 'yellow';
+            const now = new Date(); const cur = now.getHours()*60 + now.getMinutes();
+            const [sh, sm] = s.split(':').map(Number);
+            if (cur < sh*60+sm) return 'yellow';
             if (e === "Open") return 'green';
-            const [eh, em] = (e || "23:59").split(':').map(Number);
-            return (cur >= (eh * 60 + em)) ? 'red' : 'green';
+            const [eh, em] = e.split(':').map(Number);
+            return cur >= eh*60+em ? 'red' : 'green';
         }
+
+        window.editEntry = id => openModal(false, {id, ...allHangouts[id]});
     </script>
 </body>
 </html>
