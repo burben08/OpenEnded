@@ -154,8 +154,7 @@
             measurementId: "G-S8P7E02CWL"
         };
 
-        // Your VAPID Key (Cleaned of any possible invisible spaces)
-        const VAPID_KEY = "Byxz9-OQWwwRPyF6XD8P7Pg5fmmOZCA6QyUQwT_ibMM".trim();
+        const VAPID_KEY = "Byxz9-OQWwwRPyF6XD8P7Pg5fmmOZCA6QyUQwT_ibMM";
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -173,14 +172,14 @@
             addHangoutBtn: document.getElementById('add-hangout-btn'),
             hangoutModal: document.getElementById('hangout-modal'),
             closeModal: document.getElementById('close-modal'),
-            enableNotifBtn: document.getElementById('enable-notif-btn'),
-            notifStatus: document.getElementById('notif-status'),
-            errorDetails: document.getElementById('error-details'),
             saveHangoutBtn: document.getElementById('save-hangout-btn'),
             locationInput: document.getElementById('location-name'),
             timeDisplay: document.getElementById('time-display'),
             slider: document.getElementById('time-slider'),
-            hangoutsList: document.getElementById('hangouts-list-container')
+            hangoutsList: document.getElementById('hangouts-list-container'),
+            enableNotifBtn: document.getElementById('enable-notif-btn'),
+            notifStatus: document.getElementById('notif-status'),
+            errorDetails: document.getElementById('error-details')
         };
 
         let currentUser = null;
@@ -188,7 +187,6 @@
         let markers = {};
         let allHangouts = {};
         let timeSliderInstance = null;
-        let isHistoryMode = false;
 
         // --- NOTIFICATIONS ---
         async function setupNotifications() {
@@ -201,7 +199,13 @@
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                    // Force wait for service worker on GitHub Pages
+                    const reg = await navigator.serviceWorker.ready;
+                    const token = await messaging.getToken({ 
+                        vapidKey: VAPID_KEY,
+                        serviceWorkerRegistration: reg 
+                    });
+                    
                     if (token) {
                         await db.ref(`users/${currentUser.name}/fcmToken`).set(token);
                         UI.notifStatus.innerText = "SUCCESS! TOKEN SAVED.";
@@ -280,7 +284,7 @@
                 host: currentUser.display,
                 host_id: currentUser.name,
                 location_name: loc,
-                coordinates: { lat: 47.3769, lng: 8.5417 }, // Default for demo
+                coordinates: { lat: 47.3769, lng: 8.5417 },
                 start_time: minutesToTime(v[0]),
                 end_time: minutesToTime(v[1]),
                 timestamp: Date.now()
@@ -318,8 +322,19 @@
                 UI.usernameInput.value = currentUser.display;
                 UI.loginBtn.click(); 
             }
+            
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('firebase-messaging-sw.js').catch(() => {});
+                // IMPORTANT: The path should be relative to the site root for GitHub Pages
+                // We use the full path to ensure it finds the file regardless of the subfolder
+                const swPath = 'firebase-messaging-sw.js';
+                
+                navigator.serviceWorker.register(swPath)
+                .then(reg => {
+                    console.log("Service Worker Registered:", reg.scope);
+                })
+                .catch(err => {
+                    console.warn("SW Registration failed:", err.message);
+                });
             }
         });
 
