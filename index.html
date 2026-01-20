@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ÖPER UME?</title>
+    <title>ÖBER UME?</title>
     
     <!-- Favicon: Pin Emoji -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📍</text></svg>">
@@ -334,7 +334,9 @@
         .leave-btn:hover { background: var(--danger); color: white; }
         .join-btn { background: var(--success); color: white; }
 
-        #confirm-modal, #join-modal { align-items: center; }
+        /* Higher Z-Index for popups above Edit screen */
+        #confirm-modal, #join-modal { align-items: center; z-index: 2500; }
+        
         #confirm-modal .modal-content, #join-modal .modal-content {
             border: 4px solid #000;
             border-radius: 0;
@@ -410,9 +412,9 @@
 
     <div id="login-screen">
         <div class="login-card">
-            <h1 class="pixel-font">ZÜRI PROMITREFF</h1>
+            <h1 class="pixel-font">FILMTAGE PROMITREFF</h1>
             <div class="input-group">
-                <input type="text" id="username-input" placeholder="YOUR NAME?">
+                <input type="text" id="username-input" placeholder="DI NAME?">
                 <button id="login-btn">START</button>
             </div>
             <p id="status-msg" class="pixel-font"></p>
@@ -464,13 +466,18 @@
                 <label>MOOD</label>
                 <div class="chips-container" id="intentions-container">
                     <button class="chip" data-val="Coffee">Kaffi-Schwatz</button>
-                    <button class="chip" data-val="Beers">Fübber</button>
+                    <button class="chip" data-val="Bar Game">Film diskutiere</button>
+                    <button class="chip" data-val="Drinking">Lästere</button>
+                    <button class="chip" data-val="Beers">Bierli</button>
+                    <button class="chip" data-val="Drinking">Disco-Dancen</button>
+
                     <button class="chip" data-val="Reading">Zäme lese</button>
-                    <button class="chip" data-val="Games">Game</button>
-                    <button class="chip" data-val="Fun Work">"Schaffe"</button>
-                    <button class="chip" data-val="Serious Work">Schaffe</button>
-                    <button class="chip" data-val="Drinking">Festplatte lösche</button>
-                    <button class="chip" data-val="Bar Game">Bar Hunt</button>
+                    <button class="chip" data-val="Fun Work">Zäme "Schaffe"</button>
+                    <button class="chip" data-val="Serious Work">Zäme Schaffe</button>
+
+                    <button class="chip" data-val="Games">Spieli</button>
+                    <button class="chip" data-val="Bar Game">Snacke</button>
+                    
                 </div>
             </div>
 
@@ -608,7 +615,8 @@
         }
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([47.3769, 8.5417], 13);
+            // Updated to Solothurn
+            map = L.map('map', { zoomControl: false }).setView([47.2085, 7.5373], 16);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             setTimeout(() => map.invalidateSize(), 200);
             map.on('click', (e) => { 
@@ -618,7 +626,7 @@
             });
             listenForHangouts();
             listenForUsers();
-            setInterval(renderMarkersAndList, 30000); // Check every 30s for status updates
+            setInterval(renderMarkersAndList, 30000); 
         }
 
         UI.infoBtn.addEventListener('click', () => { UI.settingsModal.classList.remove('hidden'); updateHistoryBtnText(); });
@@ -653,15 +661,11 @@
             const now = Date.now();
             const displayList = Object.entries(allHangouts).map(([id, h]) => ({ id, ...h }))
                 .filter(item => {
-                    const status = getStatus(item);
-                    // 24H Rule: Only show if it's not history mode AND (it's not red OR it's been red for less than 24h)
-                    // We calculate end time to check against "now"
                     const endTs = getHangoutEndTs(item);
                     if (isHistoryMode) {
                         const userInJoiners = item.joiners && Object.values(item.joiners).some(j => j.name === currentUser.name);
                         return item.host_id === currentUser.name || (item.friends && item.friends.includes(currentUser.display)) || userInJoiners;
                     }
-                    // Current filter: Visible if end time is less than 24h in the past
                     return (now - endTs) < (24 * 60 * 60 * 1000);
                 })
                 .sort((a,b) => b.timestamp - a.timestamp);
@@ -840,7 +844,6 @@
 
         function getHangoutEndTs(h) {
             if (h.end_time === "Open") {
-                // For Open, we treat end as end of that calendar day + 24h grace logic
                 const d = new Date(h.timestamp);
                 d.setHours(23, 59, 59, 999);
                 return d.getTime();
@@ -883,21 +886,75 @@
                             await db.ref(`hangouts/${pendingAction.id}`).update({ host: newHost.display, host_id: newHost.name, start_time: newHost.start_time, end_time: newHost.end_time });
                         } else await db.ref(`hangouts/${pendingAction.id}`).update({ end_time: nowStr });
                     } else await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
+                } else if (pendingAction.type === 'revive_no') {
+                    // Logic for "No, host is not there" -> Joiner becomes new host
+                    const h = allHangouts[pendingJoinId];
+                    const joinVals = joinSliderInstance.get();
+                    const joinStartTime = minutesToTime(joinVals[0]);
+                    const joinEndTime = UI.joinOpenEnded.checked ? "Open" : minutesToTime(joinVals[1]);
+
+                    // Move old host to joiners
+                    await db.ref(`hangouts/${pendingJoinId}/joiners/${h.host_id}`).set({
+                        name: h.host_id, display: h.host,
+                        start_time: h.start_time, end_time: h.end_time
+                    });
+
+                    // Set Joiner as new host
+                    await db.ref(`hangouts/${pendingJoinId}`).update({
+                        host: currentUser.display, host_id: currentUser.name,
+                        start_time: joinStartTime, end_time: joinEndTime,
+                        timestamp: Date.now() // Reset timestamp to today
+                    });
+                    UI.joinModal.classList.add('hidden');
+                } else if (pendingAction.type === 'revive_yes') {
+                    // Logic for "Yes, host is still there" -> Sync host times with joiner
+                    const joinVals = joinSliderInstance.get();
+                    const joinStartTime = minutesToTime(joinVals[0]);
+                    const joinEndTime = UI.joinOpenEnded.checked ? "Open" : minutesToTime(joinVals[1]);
+
+                    await db.ref(`hangouts/${pendingJoinId}`).update({
+                        start_time: joinStartTime, end_time: joinEndTime,
+                        timestamp: Date.now()
+                    });
+                    
+                    await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({
+                        name: currentUser.name, display: currentUser.display,
+                        start_time: joinStartTime, end_time: joinEndTime
+                    });
+                    UI.joinModal.classList.add('hidden');
                 }
             }
             UI.confirmModal.classList.add('hidden');
             pendingAction = null;
         });
 
-        UI.confirmNoBtn.addEventListener('click', () => { UI.confirmModal.classList.add('hidden'); pendingAction = null; });
+        UI.confirmNoBtn.addEventListener('click', () => { 
+            if (pendingAction && (pendingAction.type === 'revive_yes' || pendingAction.type === 'revive_no')) {
+                // Clicking "No" on the revival prompt handled via button logic
+            }
+            UI.confirmModal.classList.add('hidden'); 
+            pendingAction = null; 
+        });
 
         window.joinEntry = (id) => {
             const h = allHangouts[id];
             if (!h) return;
             pendingJoinId = id;
             UI.joinModal.classList.remove('hidden');
+            
             const status = getStatus(h);
-            let joinStart;
+            let joinStart, joinEndMins;
+
+            // Default Join End Time matches Hangout's end time
+            if (h.end_time === "Open") {
+                joinEndMins = 1440;
+                UI.joinOpenEnded.checked = true;
+            } else {
+                const [eh, em] = h.end_time.split(':').map(Number);
+                joinEndMins = eh * 60 + em;
+                UI.joinOpenEnded.checked = false;
+            }
+
             if (status === 'yellow') {
                 const [hh, mm] = h.start_time.split(':').map(Number);
                 joinStart = hh * 60 + mm;
@@ -905,11 +962,28 @@
                 const now = new Date();
                 joinStart = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
             }
-            initJoinSlider(joinStart, 1440);
+            
+            initJoinSlider(joinStart, joinEndMins);
         };
 
         UI.joinConfirmBtn.addEventListener('click', async () => {
             if (pendingJoinId) {
+                const h = allHangouts[pendingJoinId];
+                if (getStatus(h) === 'red') {
+                    // specialized revival flow
+                    UI.confirmModalTitle.innerText = "INACTIVE ENTRY";
+                    UI.confirmModalText.innerText = `Is ${h.host} still there?`;
+                    UI.confirmYesBtn.innerText = "YES";
+                    UI.confirmNoBtn.innerText = "NO";
+                    
+                    // Bind temp logic
+                    UI.confirmYesBtn.onclick = () => { pendingAction = {type: 'revive_yes'}; UI.confirmYesBtn.onclick = null; UI.confirmYesBtn.innerText = "YES"; UI.confirmNoBtn.innerText = "NO"; UI.confirmYesBtn.click(); };
+                    UI.confirmNoBtn.onclick = () => { pendingAction = {type: 'revive_no'}; UI.confirmNoBtn.onclick = null; UI.confirmYesBtn.innerText = "YES"; UI.confirmNoBtn.innerText = "NO"; UI.confirmYesBtn.click(); };
+                    
+                    UI.confirmModal.classList.remove('hidden');
+                    return;
+                }
+
                 const vals = joinSliderInstance.get();
                 await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({
                     name: currentUser.name, display: currentUser.display,
@@ -920,6 +994,7 @@
                 pendingJoinId = null;
             }
         });
+
         UI.joinCancelBtn.addEventListener('click', () => { UI.joinModal.classList.add('hidden'); pendingJoinId = null; });
 
         UI.saveBtn.addEventListener('click', async () => {
@@ -930,7 +1005,8 @@
             let finalCoords = clickedCoords;
             if (!finalCoords) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locName + ', Zurich')}`);
+                    // Added Solothurn bias
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locName + ', Solothurn')}`);
                     const data = await res.json();
                     if (data && data.length > 0) finalCoords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
                     else { showError("NOT FOUND. CLICK ON MAP."); UI.saveBtn.disabled = false; UI.saveBtn.innerText = "BROADCAST"; return; }
@@ -993,4 +1069,3 @@
     </script>
 </body>
 </html>
-
