@@ -214,6 +214,10 @@
             display: flex; justify-content: center; align-items: flex-end;
         }
 
+        #hangout-modal { z-index: 2000; }
+        #join-modal { z-index: 2500; align-items: center; }
+        #confirm-modal { z-index: 3000; align-items: center; }
+
         .modal-content {
             background-color: white; width: 100%; max-width: 500px;
             border: 4px solid #000; border-bottom: none;
@@ -289,7 +293,7 @@
         #error-toast {
             position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 3000; background: #fff;
+            z-index: 4000; background: #fff;
             border: 4px solid var(--danger);
             padding: 20px; text-align: center;
             box-shadow: 8px 8px 0px rgba(0,0,0,0.2);
@@ -309,6 +313,12 @@
             border: 3px solid black; box-shadow: 3px 3px 0px rgba(0,0,0,0.3);
             font-size: 18px; text-transform: uppercase;
         }
+        
+        .marker-cluster {
+            box-shadow: 3px 3px 0px black, 6px 6px 0px rgba(0,0,0,0.2);
+            border-width: 4px;
+        }
+
         .marker-green { background-color: var(--success); }
         .marker-yellow { background-color: var(--warning); color: #000; }
         .marker-red { background-color: var(--danger); }
@@ -318,11 +328,12 @@
             margin-top: 10px;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
             justify-content: center;
             border-top: 1px solid #ccc;
             padding-top: 8px;
         }
-        .edit-btn, .leave-btn, .join-btn {
+        .edit-btn, .leave-btn, .join-btn, .new-btn {
             background: #eee;
             border: 2px solid #000;
             font-family: 'VT323', monospace;
@@ -333,10 +344,28 @@
         .edit-btn:hover { background: var(--primary); color: white; }
         .leave-btn:hover { background: var(--danger); color: white; }
         .join-btn { background: var(--success); color: white; }
+        .new-btn { background: var(--accent); color: white; }
 
-        /* Higher Z-Index for popups above Edit screen */
-        #confirm-modal, #join-modal { align-items: center; z-index: 2500; }
-        
+        .cluster-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0 0 0;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .cluster-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 5px;
+            border-bottom: 2px solid #eee;
+            cursor: pointer;
+        }
+        .cluster-item:hover { background: #f0f0f0; }
+        .cluster-item .dot { width: 12px; height: 12px; border: 2px solid #000; flex-shrink: 0; }
+        .cluster-item strong { font-size: 18px; line-height: 1; }
+        .cluster-item small { font-size: 14px; color: #666; }
+
         #confirm-modal .modal-content, #join-modal .modal-content {
             border: 4px solid #000;
             border-radius: 0;
@@ -469,15 +498,12 @@
                     <button class="chip" data-val="Bar Game">Film diskutiere</button>
                     <button class="chip" data-val="Drinking">Lästere</button>
                     <button class="chip" data-val="Beers">Bierli</button>
-                    <button class="chip" data-val="Drinking">Disco-Dancen</button>
-
+                    <button class="chip" data-val="Disco">Disco-Dancen</button>
                     <button class="chip" data-val="Reading">Zäme lese</button>
                     <button class="chip" data-val="Fun Work">Zäme "Schaffe"</button>
                     <button class="chip" data-val="Serious Work">Zäme Schaffe</button>
-
                     <button class="chip" data-val="Games">Spieli</button>
-                    <button class="chip" data-val="Bar Game">Snacke</button>
-                    
+                    <button class="chip" data-val="Snacks">Snacke</button>
                 </div>
             </div>
 
@@ -502,6 +528,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <script>
+        // --- CONFIGURATION ---
+        const HANGOUT_CLEANUP_HOURS = 24; 
+
         const firebaseConfig = {
             apiKey: "AIzaSyDUQ2gWD92UrDM94_f2yNklYXBInT9cDvw",
             authDomain: "openended-f7e4e.firebaseapp.com",
@@ -615,8 +644,7 @@
         }
 
         function initMap() {
-            // Updated to Solothurn
-            map = L.map('map', { zoomControl: false }).setView([47.2085, 7.5373], 16);
+            map = L.map('map', { zoomControl: false }).setView([47.2081, 7.5375], 16);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             setTimeout(() => map.invalidateSize(), 200);
             map.on('click', (e) => { 
@@ -659,6 +687,7 @@
             Object.values(markers).forEach(m => map.removeLayer(m));
             markers = {};
             const now = Date.now();
+            
             const displayList = Object.entries(allHangouts).map(([id, h]) => ({ id, ...h }))
                 .filter(item => {
                     const endTs = getHangoutEndTs(item);
@@ -666,16 +695,37 @@
                         const userInJoiners = item.joiners && Object.values(item.joiners).some(j => j.name === currentUser.name);
                         return item.host_id === currentUser.name || (item.friends && item.friends.includes(currentUser.display)) || userInJoiners;
                     }
-                    return (now - endTs) < (24 * 60 * 60 * 1000);
-                })
-                .sort((a,b) => b.timestamp - a.timestamp);
+                    return (now - endTs) < (HANGOUT_CLEANUP_HOURS * 60 * 60 * 1000);
+                });
 
-            displayList.forEach(item => createMarker(item.id, item));
+            const grouped = {};
+            displayList.forEach(h => {
+                const key = `${h.coordinates.lat.toFixed(6)},${h.coordinates.lng.toFixed(6)}`;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(h);
+            });
 
-            if (displayList.length === 0) {
+            Object.values(grouped).forEach(group => {
+                if (group.length === 1) {
+                    createMarker(group[0].id, group[0]);
+                } else {
+                    createClusterMarker(group);
+                }
+            });
+
+            const sortedList = displayList.sort((a, b) => {
+                const statusA = getStatus(a);
+                const statusB = getStatus(b);
+                const order = { 'green': 1, 'yellow': 2, 'red': 3, 'history': 4 };
+                if (order[statusA] !== order[statusB]) return order[statusA] - order[statusB];
+                if (statusA === 'yellow') return getHangoutStartTs(a) - getHangoutStartTs(b);
+                return b.timestamp - a.timestamp;
+            });
+
+            if (sortedList.length === 0) {
                 UI.listContainer.innerHTML = `<div class="empty-list-msg pixel-font">No one online...</div>`;
             } else {
-                UI.listContainer.innerHTML = displayList.map(item => {
+                UI.listContainer.innerHTML = sortedList.map(item => {
                     let colorClass = isHistoryMode ? 'marker-history' : `marker-${getStatus(item)}`;
                     const day = getDayPrefix(item.timestamp);
                     const joinersList = item.joiners ? Object.values(item.joiners).map(j => j.display).join(', ') : '';
@@ -700,7 +750,9 @@
                 UI.hangoutsPanel.classList.remove('open');
                 UI.listToggleBtn.classList.remove('active');
                 map.flyTo([h.coordinates.lat, h.coordinates.lng], 16, { duration: 1.5 });
+                const key = `${h.coordinates.lat.toFixed(6)},${h.coordinates.lng.toFixed(6)}`;
                 if (markers[id]) markers[id].openPopup();
+                else if (markers[key]) markers[key].openPopup();
             }
         };
 
@@ -718,7 +770,7 @@
             }
         }
 
-        function openModal(isMapClick = false, prefillData = null) {
+        function openModal(isMapClick = false, prefillData = null, existingLocData = null) {
             UI.modal.classList.remove('hidden');
             generateDayOptions();
 
@@ -739,6 +791,21 @@
                 clickedCoords = prefillData.coordinates;
                 UI.locationHint.classList.remove('hidden');
                 UI.locationHint.innerText = "Coordinates Saved";
+            } else if (existingLocData) {
+                editingId = null;
+                UI.modalTitle.innerText = "NEW HANGOUT";
+                UI.saveBtn.innerText = "BROADCAST";
+                UI.editDeleteBtn.classList.add('hidden');
+                UI.locationInput.value = existingLocData.location_name;
+                clickedCoords = existingLocData.coordinates;
+                selectedIntentions = [];
+                selectedFriends = [];
+                UI.openEnded.checked = false;
+                const now = new Date();
+                const start = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+                initSlider(start, Math.min(1440, start + 120));
+                UI.locationHint.classList.remove('hidden');
+                UI.locationHint.innerText = "Locked to " + existingLocData.location_name;
             } else {
                 editingId = null;
                 UI.modalTitle.innerText = "NEW ENTRY";
@@ -868,7 +935,25 @@
         function showError(msg) { UI.modal.classList.add('hidden'); UI.errorMsg.innerText = msg; UI.errorToast.classList.remove('hidden'); }
 
         window.editEntry = (id) => { const data = allHangouts[id]; if (data) openModal(false, { id, ...data }); };
-        window.promptLeave = (id, isHost) => { pendingAction = { type: 'leave', id, isHost }; UI.confirmModalTitle.innerText = "LEAVE NOW?"; UI.confirmModalText.innerText = "YOUR STAY WILL END IMMEDIATELY."; UI.confirmModal.classList.remove('hidden'); };
+        
+        window.startNewAtLocation = (id) => {
+            const data = allHangouts[id];
+            if (data) {
+                map.closePopup();
+                openModal(false, null, { location_name: data.location_name, coordinates: data.coordinates });
+            }
+        };
+
+        window.promptLeave = (id, isHost) => {
+            const h = allHangouts[id];
+            const status = getStatus(h);
+            const label = status === 'yellow' ? "CANCEL" : "LEAVE NOW";
+            pendingAction = { type: 'leave', id, isHost };
+            UI.confirmModalTitle.innerText = label + "?";
+            UI.confirmModalText.innerText = "YOUR STAY WILL END IMMEDIATELY.";
+            UI.confirmModal.classList.remove('hidden');
+        };
+
         UI.editDeleteBtn.addEventListener('click', () => { pendingAction = { type: 'delete', id: editingId }; UI.confirmModalTitle.innerText = "DELETE ENTRY?"; UI.confirmModalText.innerText = "REMOVING FROM MAP COMPLETELY."; UI.confirmModal.classList.remove('hidden'); });
 
         UI.confirmYesBtn.addEventListener('click', async () => {
@@ -886,51 +971,27 @@
                             await db.ref(`hangouts/${pendingAction.id}`).update({ host: newHost.display, host_id: newHost.name, start_time: newHost.start_time, end_time: newHost.end_time });
                         } else await db.ref(`hangouts/${pendingAction.id}`).update({ end_time: nowStr });
                     } else await db.ref(`hangouts/${pendingAction.id}/joiners/${currentUser.name}`).update({ end_time: nowStr });
-                } else if (pendingAction.type === 'revive_no') {
-                    // Logic for "No, host is not there" -> Joiner becomes new host
+                } else if (pendingAction.type === 'revive_check') {
                     const h = allHangouts[pendingJoinId];
                     const joinVals = joinSliderInstance.get();
                     const joinStartTime = minutesToTime(joinVals[0]);
                     const joinEndTime = UI.joinOpenEnded.checked ? "Open" : minutesToTime(joinVals[1]);
-
-                    // Move old host to joiners
-                    await db.ref(`hangouts/${pendingJoinId}/joiners/${h.host_id}`).set({
-                        name: h.host_id, display: h.host,
-                        start_time: h.start_time, end_time: h.end_time
-                    });
-
-                    // Set Joiner as new host
-                    await db.ref(`hangouts/${pendingJoinId}`).update({
-                        host: currentUser.display, host_id: currentUser.name,
-                        start_time: joinStartTime, end_time: joinEndTime,
-                        timestamp: Date.now() // Reset timestamp to today
-                    });
-                    UI.joinModal.classList.add('hidden');
-                } else if (pendingAction.type === 'revive_yes') {
-                    // Logic for "Yes, host is still there" -> Sync host times with joiner
-                    const joinVals = joinSliderInstance.get();
-                    const joinStartTime = minutesToTime(joinVals[0]);
-                    const joinEndTime = UI.joinOpenEnded.checked ? "Open" : minutesToTime(joinVals[1]);
-
-                    await db.ref(`hangouts/${pendingJoinId}`).update({
-                        start_time: joinStartTime, end_time: joinEndTime,
-                        timestamp: Date.now()
-                    });
-                    
-                    await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({
-                        name: currentUser.name, display: currentUser.display,
-                        start_time: joinStartTime, end_time: joinEndTime
-                    });
-                    UI.joinModal.classList.add('hidden');
+                    await db.ref(`hangouts/${pendingJoinId}`).update({ start_time: joinStartTime, end_time: joinEndTime, timestamp: Date.now() });
+                    await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({ name: currentUser.name, display: currentUser.display, start_time: joinStartTime, end_time: joinEndTime });
                 }
             }
             UI.confirmModal.classList.add('hidden');
             pendingAction = null;
         });
 
-        UI.confirmNoBtn.addEventListener('click', () => { 
-            if (pendingAction && (pendingAction.type === 'revive_yes' || pendingAction.type === 'revive_no')) {
-                // Clicking "No" on the revival prompt handled via button logic
+        UI.confirmNoBtn.addEventListener('click', async () => { 
+            if (pendingAction && pendingAction.type === 'revive_check') {
+                const h = allHangouts[pendingJoinId];
+                const joinVals = joinSliderInstance.get();
+                const joinStartTime = minutesToTime(joinVals[0]);
+                const joinEndTime = UI.joinOpenEnded.checked ? "Open" : minutesToTime(joinVals[1]);
+                await db.ref(`hangouts/${pendingJoinId}/joiners/${h.host_id}`).set({ name: h.host_id, display: h.host, start_time: h.start_time, end_time: h.end_time });
+                await db.ref(`hangouts/${pendingJoinId}`).update({ host: currentUser.display, host_id: currentUser.name, start_time: joinStartTime, end_time: joinEndTime, timestamp: Date.now() });
             }
             UI.confirmModal.classList.add('hidden'); 
             pendingAction = null; 
@@ -941,28 +1002,12 @@
             if (!h) return;
             pendingJoinId = id;
             UI.joinModal.classList.remove('hidden');
-            
             const status = getStatus(h);
             let joinStart, joinEndMins;
-
-            // Default Join End Time matches Hangout's end time
-            if (h.end_time === "Open") {
-                joinEndMins = 1440;
-                UI.joinOpenEnded.checked = true;
-            } else {
-                const [eh, em] = h.end_time.split(':').map(Number);
-                joinEndMins = eh * 60 + em;
-                UI.joinOpenEnded.checked = false;
-            }
-
-            if (status === 'yellow') {
-                const [hh, mm] = h.start_time.split(':').map(Number);
-                joinStart = hh * 60 + mm;
-            } else {
-                const now = new Date();
-                joinStart = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-            }
-            
+            if (h.end_time === "Open") { joinEndMins = 1440; UI.joinOpenEnded.checked = true; }
+            else { const [eh, em] = h.end_time.split(':').map(Number); joinEndMins = eh * 60 + em; UI.joinOpenEnded.checked = false; }
+            if (status === 'yellow') { const [hh, mm] = h.start_time.split(':').map(Number); joinStart = hh * 60 + mm; }
+            else { const now = new Date(); joinStart = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15; }
             initJoinSlider(joinStart, joinEndMins);
         };
 
@@ -970,20 +1015,15 @@
             if (pendingJoinId) {
                 const h = allHangouts[pendingJoinId];
                 if (getStatus(h) === 'red') {
-                    // specialized revival flow
+                    UI.joinModal.classList.add('hidden');
                     UI.confirmModalTitle.innerText = "INACTIVE ENTRY";
                     UI.confirmModalText.innerText = `Is ${h.host} still there?`;
                     UI.confirmYesBtn.innerText = "YES";
                     UI.confirmNoBtn.innerText = "NO";
-                    
-                    // Bind temp logic
-                    UI.confirmYesBtn.onclick = () => { pendingAction = {type: 'revive_yes'}; UI.confirmYesBtn.onclick = null; UI.confirmYesBtn.innerText = "YES"; UI.confirmNoBtn.innerText = "NO"; UI.confirmYesBtn.click(); };
-                    UI.confirmNoBtn.onclick = () => { pendingAction = {type: 'revive_no'}; UI.confirmNoBtn.onclick = null; UI.confirmYesBtn.innerText = "YES"; UI.confirmNoBtn.innerText = "NO"; UI.confirmYesBtn.click(); };
-                    
+                    pendingAction = { type: 'revive_check' };
                     UI.confirmModal.classList.remove('hidden');
                     return;
                 }
-
                 const vals = joinSliderInstance.get();
                 await db.ref(`hangouts/${pendingJoinId}/joiners/${currentUser.name}`).set({
                     name: currentUser.name, display: currentUser.display,
@@ -1005,7 +1045,6 @@
             let finalCoords = clickedCoords;
             if (!finalCoords) {
                 try {
-                    // Added Solothurn bias
                     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locName + ', Solothurn')}`);
                     const data = await res.json();
                     if (data && data.length > 0) finalCoords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
@@ -1049,7 +1088,7 @@
             let statusText = isHistoryMode ? new Date(data.timestamp).toLocaleDateString() : (status === 'yellow' ? `${data.host.toUpperCase()} WILL BE HERE` : (status === 'red' ? `${data.host.toUpperCase()} WAS HERE` : `${data.host.toUpperCase()} IS HERE`));
 
             const popup = `
-                <div style="text-align: center; font-family:'VT323'; font-size:18px; max-width: 200px;">
+                <div style="text-align: center; font-family:'VT323'; font-size:18px; min-width: 220px;">
                     <strong style="font-family:'Press Start 2P'; font-size:10px;">${data.location_name}</strong><br>
                     <span style="display:block; margin: 4px 0;">${statusText}</span>
                     <small style="color:#777;">${day} ${data.start_time} - ${data.end_time}</small>
@@ -1059,13 +1098,84 @@
                         ${joinersHtml ? `<span style="font-size:14px; display:block; margin-top:5px; color:var(--success);">JOINED:</span><ul style="list-style:none; padding:0; margin:0; font-size:14px; color:var(--success);">${joinersHtml}</ul>` : ''}
                     </div>
                     <div class="popup-controls">
-                    ${isOwner ? `<button class="edit-btn" onclick="editEntry('${id}')">EDIT</button><button class="leave-btn" onclick="promptLeave('${id}', true)">LEAVE NOW</button>` : 
-                    `${isActiveJoiner ? `<button class="leave-btn" onclick="promptLeave('${id}', false)">LEAVE NOW</button>` : ''}
-                     ${!isActiveJoiner && !isHistoryMode ? `<button class="join-btn" onclick="joinEntry('${id}')">JOIN</button>` : ''}`}
+                        ${status === 'red' ? (isOwner ? `
+                            <button class="edit-btn" onclick="editEntry('${id}')">EXTEND</button>
+                            <button class="new-btn" onclick="startNewAtLocation('${id}')">NEW HANGOUT</button>
+                        ` : '') : `
+                            ${isOwner ? `
+                                <button class="edit-btn" onclick="editEntry('${id}')">EDIT</button>
+                                <button class="leave-btn" onclick="promptLeave('${id}', true)">${status === 'yellow' ? 'CANCEL' : 'LEAVE NOW'}</button>
+                            ` : `
+                                ${isActiveJoiner ? `<button class="leave-btn" onclick="promptLeave('${id}', false)">LEAVE NOW</button>` : ''}
+                                ${!isActiveJoiner && !isHistoryMode ? `<button class="join-btn" onclick="joinEntry('${id}')">JOIN</button>` : ''}
+                            `}
+                            <button class="new-btn" onclick="startNewAtLocation('${id}')">NEW HANGOUT</button>
+                        `}
                     </div>
                 </div>`;
             markers[id] = L.marker([data.coordinates.lat, data.coordinates.lng], { icon }).addTo(map).bindPopup(popup);
         }
+
+        function createClusterMarker(hangouts) {
+            let status = 'red';
+            if (isHistoryMode) {
+                status = 'history';
+            } else {
+                if (hangouts.some(h => getStatus(h) === 'green')) status = 'green';
+                else if (hangouts.some(h => getStatus(h) === 'yellow')) status = 'yellow';
+            }
+
+            const key = `${hangouts[0].coordinates.lat.toFixed(6)},${hangouts[0].coordinates.lng.toFixed(6)}`;
+            const icon = L.divIcon({
+                className: 'leaflet-div-icon',
+                html: `<div class="custom-marker marker-cluster marker-${status}">${hangouts.length}</div>`,
+                iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -20]
+            });
+
+            const sortedGroup = hangouts.sort((a,b) => {
+                const sA = getStatus(a);
+                const sB = getStatus(b);
+                const order = { 'green': 1, 'yellow': 2, 'red': 3, 'history': 4 };
+                if (order[sA] !== order[sB]) return order[sA] - order[sB];
+                return getHangoutStartTs(a) - getHangoutStartTs(b);
+            });
+
+            const listItems = sortedGroup.map(h => {
+                const s = isHistoryMode ? 'history' : getStatus(h);
+                const day = getDayPrefix(h.timestamp);
+                return `
+                    <li class="cluster-item" onclick="openSpecificHangout('${h.id}')">
+                        <div class="dot marker-${s}"></div>
+                        <div style="flex:1; text-align: left;">
+                            <strong>${h.host}</strong><br>
+                            <small>${day} ${h.start_time} - ${h.end_time}</small>
+                        </div>
+                        <span class="pixel-font" style="font-size:8px; background: #eee; padding: 2px 4px; border: 1px solid #000;">OPEN</span>
+                    </li>
+                `;
+            }).join('');
+
+            const popup = `
+                <div style="text-align:center; font-family:'VT323'; min-width: 250px;">
+                    <strong style="font-family:'Press Start 2P'; font-size:10px;">${hangouts[0].location_name}</strong>
+                    <ul class="cluster-list">${listItems}</ul>
+                    <button class="primary-btn" onclick="startNewAtLocation('${hangouts[0].id}')" style="margin-top:15px; padding: 10px; font-size: 10px;">NEW HANGOUT HERE</button>
+                </div>
+            `;
+
+            markers[key] = L.marker([hangouts[0].coordinates.lat, hangouts[0].coordinates.lng], { icon }).addTo(map).bindPopup(popup);
+        }
+
+        window.openSpecificHangout = (id) => {
+            const data = allHangouts[id];
+            if (!data) return;
+            map.closePopup();
+            createMarker(id, data);
+            markers[id].openPopup();
+            // Revert marker look when this specific popup is closed
+            map.once('popupclose', () => renderMarkersAndList());
+        };
+
     </script>
 </body>
 </html>
