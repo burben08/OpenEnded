@@ -441,7 +441,7 @@
 
     <div id="login-screen">
         <div class="login-card">
-            <h1 class="pixel-font">FILMTAGE PROMITREFF</h1>
+            <h1 class="pixel-font">ZÜRI PROMITREFF</h1>
             <div class="input-group">
                 <input type="text" id="username-input" placeholder="DI NAME?">
                 <button id="login-btn">START</button>
@@ -644,7 +644,8 @@
         }
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([47.2081, 7.5375], 16);
+            // Set to Zurich Center Coordinates
+            map = L.map('map', { zoomControl: false }).setView([47.3769, 8.5417], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             setTimeout(() => map.invalidateSize(), 200);
             map.on('click', (e) => { 
@@ -1045,7 +1046,8 @@
             let finalCoords = clickedCoords;
             if (!finalCoords) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locName + ', Solothurn')}`);
+                    // Set search bias back to Zurich
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locName + ', Zurich')}`);
                     const data = await res.json();
                     if (data && data.length > 0) finalCoords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
                     else { showError("NOT FOUND. CLICK ON MAP."); UI.saveBtn.disabled = false; UI.saveBtn.innerText = "BROADCAST"; return; }
